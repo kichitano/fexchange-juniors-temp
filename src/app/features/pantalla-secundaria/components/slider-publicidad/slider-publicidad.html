@@ -1,0 +1,10 @@
+<div class="slider">
+  @for (imagen of imagenes; track imagen; let i = $index) {
+    <img
+      [src]="imagen"
+      alt=""
+      class="imagen"
+      [class.visible]="i === indiceActual()"
+    />
+  }
+</div>

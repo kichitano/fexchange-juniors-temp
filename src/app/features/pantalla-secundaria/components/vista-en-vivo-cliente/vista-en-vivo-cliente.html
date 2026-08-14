@@ -1,0 +1,28 @@
+@if (vista(); as v) {
+  <div class="vista-en-vivo">
+    <div class="encabezado">
+      <span class="moneda-origen">{{ nombreOrigen() }}</span>
+      <span class="flecha" aria-hidden="true">→</span>
+      <span class="moneda-destino">{{ nombreDestino() }}</span>
+    </div>
+
+    <div class="columna">
+      <div class="bloque">
+        <span class="etiqueta">Monto</span>
+        <div class="cifra" appAutoFitTexto [appAutoFitTextoMin]="28">{{ montoTexto() }}</div>
+      </div>
+
+      <div class="bloque">
+        <span class="etiqueta">Precio</span>
+        <div class="cifra cifra-precio" appAutoFitTexto [appAutoFitTextoMin]="24">{{ tasaTexto() }}</div>
+      </div>
+
+      <div class="bloque bloque-total">
+        <span class="etiqueta">Total</span>
+        <div class="cifra cifra-total" appAutoFitTexto [appAutoFitTextoMin]="28">{{ resultadoTexto() }}</div>
+      </div>
+
+      <p class="agradecimiento">Gracias por su preferencia</p>
+    </div>
+  </div>
+}

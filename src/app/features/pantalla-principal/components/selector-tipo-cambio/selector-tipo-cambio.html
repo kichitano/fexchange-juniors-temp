@@ -1,0 +1,14 @@
+<div class="selector" role="group" aria-label="Tipo de cambio activo">
+  @for (par of configuracion.pares; track par.origen + par.destino) {
+    <button
+      type="button"
+      class="chip"
+      [class.activo]="esActivo(par.origen, par.destino)"
+      (click)="seleccionar(par.origen, par.destino)"
+    >
+      <span class="moneda">{{ par.origen }}</span>
+      <span class="flecha" aria-hidden="true">→</span>
+      <span class="moneda">{{ par.destino }}</span>
+    </button>
+  }
+</div>

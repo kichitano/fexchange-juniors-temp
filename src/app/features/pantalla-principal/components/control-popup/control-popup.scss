@@ -1,0 +1,15 @@
+:host {
+  display: block;
+}
+
+.control-popup {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  flex-wrap: wrap;
+}
+
+.aviso {
+  font-size: 0.8rem;
+  color: var(--color-alert);
+}

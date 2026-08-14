@@ -1,0 +1,29 @@
+<div class="pantalla">
+  <header class="marca">
+    <img src="assets/brand/logo.png" alt="" class="logo" />
+    <div class="identidad">
+      <span class="nombre">Casa de Cambio Juniors</span>
+      <span class="slogan">Tu cambio, con precisión.</span>
+    </div>
+  </header>
+
+  <main class="escenario">
+    @switch (modo()) {
+      @case ('vista-en-vivo') {
+        <app-vista-en-vivo-cliente />
+      }
+      @case ('publicidad') {
+        <app-slider-publicidad [reiniciarEn]="reiniciarSlider()" />
+      }
+      @default {
+        <div class="reposo">
+          <img src="assets/brand/logo.png" alt="" class="logo-reposo" />
+          <span class="nombre-reposo">Casa de Cambio Juniors</span>
+          <span class="slogan-reposo">Tu cambio, con precisión.</span>
+        </div>
+      }
+    }
+  </main>
+
+  <app-panel-precio-fijo />
+</div>

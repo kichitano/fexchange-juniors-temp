@@ -1,0 +1,78 @@
+<section class="historial">
+  <header class="cabecera">
+    <button type="button" class="boton-secundario" (click)="alternarVisible()">
+      @if (visible()) {
+        Ocultar historial
+      } @else {
+        Ver historial ({{ historialFiltrado().length }})
+      }
+    </button>
+
+    <div class="exportar">
+      <label class="etiqueta" for="fecha-historial">Día</label>
+      <input
+        id="fecha-historial"
+        type="date"
+        class="campo-fecha"
+        [value]="fechaSeleccionada()"
+        (input)="onFechaSeleccionadaInput($event)"
+      />
+      <button type="button" class="boton-secundario" (click)="exportar()">Exportar .json</button>
+
+      @if (persistencia.soportaArchivoLocal) {
+        <button type="button" class="boton-secundario" (click)="conectarArchivo()">
+          @if (persistencia.archivoConectado()) {
+            Archivo local conectado ✓
+          } @else {
+            Conectar archivo local
+          }
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (visible()) {
+    <div class="tabla-contenedor">
+      @if (historialFiltrado().length === 0) {
+        <p class="vacio">No hay cambios confirmados el {{ fechaLocalSeleccionada() }}.</p>
+      } @else {
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Tipo de cambio</th>
+              <th>Tasa</th>
+              <th>Monto</th>
+              <th>Resultado</th>
+              <th class="columna-acciones"><span class="visualmente-oculto">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (cambio of historialFiltrado(); track cambio.id) {
+              <tr>
+                <td>{{ cambio.fecha }}</td>
+                <td>{{ cambio.hora }}</td>
+                <td class="mono">
+                  {{ cambio.monedaOrigen }} {{ cambio.operador === 'multiplicar' ? '×' : '÷' }} → {{ cambio.monedaDestino }}
+                </td>
+                <td class="mono">{{ cambio.tasa }}</td>
+                <td class="mono">{{ formatearMonto(cambio.montoIngresado) }}</td>
+                <td class="mono resultado">{{ formatearMonto(cambio.montoResultado) }}</td>
+                <td class="columna-acciones">
+                  <button
+                    type="button"
+                    class="boton-eliminar"
+                    (click)="eliminarCambio(cambio.id)"
+                    aria-label="Eliminar este registro del historial"
+                    title="Eliminar"
+                  >✕</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
+</section>

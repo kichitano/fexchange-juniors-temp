@@ -1,0 +1,77 @@
+<section class="formula" aria-label="Cálculo de cambio">
+  <div class="grupo grupo-monto">
+    <div class="fila-etiqueta">
+      <span class="etiqueta">Monto a cambiar · {{ config().monedaOrigen }}</span>
+      <span class="hint">Presiona <kbd>M</kbd> para enfocar</span>
+    </div>
+    <input
+      #campoMonto
+      class="campo-monto"
+      type="text"
+      inputmode="numeric"
+      autocomplete="off"
+      [value]="montoTexto()"
+      [appHoldToConfirm]="duracionMs"
+      appAutoFitTexto
+      [appAutoFitTextoMin]="28"
+      (input)="onMontoInput($event)"
+      (focus)="onFocoConSeleccion($event)"
+      (progreso)="progreso.set($event)"
+      (confirmado)="onConfirmado()"
+      (cancelado)="progreso.set(0)"
+    />
+    <div class="indicador-confirmacion" [style.--progreso]="progreso()" [class.activo]="progreso() > 0">
+      <span class="anillo" aria-hidden="true"></span>
+      <span class="texto">
+        @if (progreso() > 0) {
+          Confirmando…
+        } @else {
+          Mantén Enter 2s para confirmar
+        }
+      </span>
+    </div>
+  </div>
+
+  <div class="grupo grupo-operador-tasa">
+    <div class="fila-etiqueta">
+      <span class="etiqueta">Precio (operador + tasa)</span>
+      <span class="hint">Presiona <kbd>T</kbd> para enfocar</span>
+    </div>
+    <div class="bloque-operador-tasa">
+      <div class="operador-toggle" role="group" aria-label="Operador matemático">
+        <button
+          type="button"
+          class="boton-operador"
+          [class.activo]="config().operador === 'multiplicar'"
+          (click)="cambiarOperador('multiplicar')"
+          aria-label="Multiplicar"
+        >×</button>
+        <button
+          type="button"
+          class="boton-operador"
+          [class.activo]="config().operador === 'dividir'"
+          (click)="cambiarOperador('dividir')"
+          aria-label="Dividir"
+        >÷</button>
+      </div>
+      <input
+        #campoTasa
+        class="campo-tasa"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        [value]="tasaBuffer()"
+        appAutoFitTexto
+        [appAutoFitTextoMin]="16"
+        (input)="onTasaInput($event)"
+        (focus)="onFocoConSeleccion($event)"
+        (blur)="onTasaBlur()"
+      />
+    </div>
+  </div>
+
+  <div class="grupo grupo-resultado">
+    <span class="etiqueta">Resultado · {{ config().monedaDestino }}</span>
+    <div class="resultado" appAutoFitTexto [appAutoFitTextoMin]="28">{{ resultadoTexto() }}</div>
+  </div>
+</section>

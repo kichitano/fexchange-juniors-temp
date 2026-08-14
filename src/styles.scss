@@ -1,0 +1,150 @@
+// Sistema de diseño — Casa de Cambio Juniors
+// Dirección: estándar fintech pulido, vara de calidad = banca privada premium.
+// Estrategia de color: Restrained (neutrales + un acento dorado/bronce).
+
+:root {
+  // Superficies
+  --color-bg: #0a0f1c;
+  --color-bg-elevated: #111a2c;
+  --color-bg-elevated-2: #16213a;
+  --color-bg-elevated-3: #1c2944;
+
+  // Bordes
+  --color-border: #263254;
+  --color-border-strong: #3a4972;
+
+  // Texto
+  --color-text: #eef1f8;
+  --color-text-muted: #99a3c2;
+  --color-text-faint: #6a7495;
+
+  // Acento (dorado / bronce)
+  --color-accent: #c9a24b;
+  --color-accent-strong: #e0bd6c;
+  --color-accent-ink: #241d09;
+
+  // Semánticos
+  --color-positive: #3fac74;
+  --color-positive-bg: rgba(63, 172, 116, 0.14);
+  --color-alert: #dd5353;
+  --color-alert-bg: rgba(221, 83, 83, 0.14);
+
+  // Tipografía
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+
+  // Espaciado
+  --espacio-1: 4px;
+  --espacio-2: 8px;
+  --espacio-3: 12px;
+  --espacio-4: 16px;
+  --espacio-5: 24px;
+  --espacio-6: 32px;
+  --espacio-7: 48px;
+  --espacio-8: 64px;
+
+  // Bordes redondeados
+  --radio-sm: 6px;
+  --radio-md: 10px;
+  --radio-lg: 16px;
+
+  // Sombra
+  --sombra-elevada: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+  color-scheme: dark;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+.boton-secundario {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  padding: var(--espacio-3) var(--espacio-4);
+  background: var(--color-bg-elevated-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radio-md);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.boton-secundario:hover {
+  border-color: var(--color-accent);
+  background: var(--color-bg-elevated-3);
+}
+
+.boton-primario {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  padding: var(--espacio-3) var(--espacio-5);
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radio-md);
+  color: var(--color-accent-ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, transform 80ms ease;
+}
+
+.boton-primario:hover {
+  background: var(--color-accent-strong);
+}
+
+.boton-primario:active {
+  transform: scale(0.98);
+}
+
+.visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

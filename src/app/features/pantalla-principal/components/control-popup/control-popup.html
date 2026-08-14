@@ -1,0 +1,17 @@
+<div class="control-popup">
+  <button type="button" class="boton-secundario" (click)="alternar()">
+    @if (popupAbierto()) {
+      Cerrar pantalla secundaria
+    } @else {
+      Abrir pantalla secundaria
+    }
+  </button>
+
+  <button type="button" class="boton-secundario" (click)="forzarPublicidad()">
+    Forzar publicidad
+  </button>
+
+  @if (bloqueadoPorNavegador()) {
+    <span class="aviso">El navegador bloqueó la ventana emergente — usa el botón para abrirla.</span>
+  }
+</div>

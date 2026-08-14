@@ -1,0 +1,122 @@
+:host {
+  display: block;
+}
+
+.historial {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radio-lg);
+  padding: var(--espacio-5);
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+  flex-wrap: wrap;
+}
+
+.exportar {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  flex-wrap: wrap;
+}
+
+.etiqueta {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.campo-fecha {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--color-text);
+  background: var(--color-bg-elevated-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radio-sm);
+  padding: var(--espacio-2) var(--espacio-3);
+}
+
+.tabla-contenedor {
+  margin-top: var(--espacio-5);
+  max-height: 360px;
+  overflow-y: auto;
+  border-top: 1px solid var(--color-border);
+}
+
+.vacio {
+  padding: var(--espacio-5) 0;
+  color: var(--color-text-faint);
+  text-align: center;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabla thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg-elevated);
+  text-align: left;
+  padding: var(--espacio-3) var(--espacio-3);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabla tbody td {
+  padding: var(--espacio-3);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.tabla tbody tr:hover {
+  background: var(--color-bg-elevated-2);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.resultado {
+  color: var(--color-positive);
+  font-weight: 600;
+}
+
+.columna-acciones {
+  width: 1%;
+  text-align: right;
+  padding-right: var(--espacio-3);
+}
+
+.boton-eliminar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radio-sm);
+  background: transparent;
+  color: var(--color-text-faint);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.boton-eliminar:hover {
+  border-color: var(--color-alert);
+  color: var(--color-alert);
+  background: var(--color-alert-bg);
+}
