@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { SyncService } from '../../../../core/services/sync.service';
 import { AutoFitTextoDirective } from '../../../../shared/directives/auto-fit-texto.directive';
-import { formatearTasa } from '../../../../shared/utils/formato-monto';
+import { formatearPrecioDelDia } from '../../../../shared/utils/formato-monto';
 
 @Component({
   selector: 'app-panel-precio-fijo',
@@ -17,5 +17,7 @@ export class PanelPrecioFijo {
     this.sync.precioDelDia()?.operador === 'dividir' ? '÷' : '×',
   );
 
-  protected readonly tasaTexto = computed(() => formatearTasa(this.sync.precioDelDia()?.tasa ?? 0));
+  protected readonly tasaTexto = computed(() =>
+    formatearPrecioDelDia(this.sync.precioDelDia()?.tasa ?? 0),
+  );
 }

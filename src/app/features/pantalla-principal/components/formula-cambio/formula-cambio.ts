@@ -177,7 +177,13 @@ export class FormulaCambio {
     if (!el) {
       return;
     }
-    el.focus();
-    el.select();
+    // Se difiere al siguiente tick: llamar focus()/select() de forma síncrona
+    // desde el keydown de M/T (mientras ese evento todavía se está
+    // procesando) hace que el foco no "pegue" de forma confiable en algunos
+    // navegadores, y el primer dígito tipeado justo después se pierde.
+    setTimeout(() => {
+      el.focus();
+      el.select();
+    });
   }
 }

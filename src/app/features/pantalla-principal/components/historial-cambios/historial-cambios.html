@@ -42,8 +42,8 @@
               <th>Fecha</th>
               <th>Hora</th>
               <th>Tipo de cambio</th>
-              <th>Tasa</th>
               <th>Monto</th>
+              <th>Tasa</th>              
               <th>Resultado</th>
               <th class="columna-acciones"><span class="visualmente-oculto">Acciones</span></th>
             </tr>
@@ -54,10 +54,10 @@
                 <td>{{ cambio.fecha }}</td>
                 <td>{{ cambio.hora }}</td>
                 <td class="mono">
-                  {{ cambio.monedaOrigen }} {{ cambio.operador === 'multiplicar' ? '×' : '÷' }} → {{ cambio.monedaDestino }}
+                  {{ cambio.monedaOrigen }} → {{ cambio.monedaDestino }}
                 </td>
-                <td class="mono">{{ cambio.tasa }}</td>
                 <td class="mono">{{ formatearMonto(cambio.montoIngresado) }}</td>
+                <td class="mono">{{ cambio.tasa }}</td>
                 <td class="mono resultado">{{ formatearMonto(cambio.montoResultado) }}</td>
                 <td class="columna-acciones">
                   <button

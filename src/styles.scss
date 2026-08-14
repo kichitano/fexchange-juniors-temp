@@ -23,6 +23,12 @@
   --color-accent-strong: #e0bd6c;
   --color-accent-ink: #241d09;
 
+  // Naranja de marca (tomado del logo), para el Precio del Día en la
+  // Pantalla Secundaria — debe distinguirse a simple vista del dorado
+  // usado en Total y demás acentos.
+  --color-marca-naranja: #f0740a;
+  --color-marca-naranja-fuerte: #ff8b2e;
+
   // Semánticos
   --color-positive: #3fac74;
   --color-positive-bg: rgba(63, 172, 116, 0.14);

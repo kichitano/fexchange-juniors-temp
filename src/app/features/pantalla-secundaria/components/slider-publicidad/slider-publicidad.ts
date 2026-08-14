@@ -1,12 +1,6 @@
 import { Component, DestroyRef, effect, input, signal } from '@angular/core';
 
-const IMAGENES = [
-  'assets/ads/ad-1.jpg',
-  'assets/ads/ad-2.jpg',
-  'assets/ads/ad-3.jpg',
-  'assets/ads/ad-4.jpg',
-  'assets/ads/ad-5.jpg',
-];
+const IMAGENES = ['assets/ads/ad-1.jpg', 'assets/ads/ad-2.jpg', 'assets/ads/ad-3.jpg'];
 
 const INTERVALO_MS = 7000;
 

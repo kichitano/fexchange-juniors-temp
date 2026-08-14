@@ -14,10 +14,21 @@ export function formatearEntero(valor: number): string {
   return `${negativo ? '-' : ''}${enteroConEspacios}`;
 }
 
+/** Hasta `maxDecimales` decimales, sin ceros de más: 275 en vez de 275.00, 275.5 en vez de 275.50. */
+export function formatearConDecimalesMax(valor: number, maxDecimales: number): string {
+  const factor = 10 ** maxDecimales;
+  const redondeada = Math.round(valor * factor) / factor;
+  return Number.isInteger(redondeada) ? String(redondeada) : redondeada.toFixed(maxDecimales);
+}
+
 /** Hasta 2 decimales, sin ceros de más: 275 en vez de 275.00, 275.5 en vez de 275.5000. */
 export function formatearTasa(valor: number): string {
-  const redondeada = Math.round(valor * 100) / 100;
-  return Number.isInteger(redondeada) ? String(redondeada) : redondeada.toFixed(2);
+  return formatearConDecimalesMax(valor, 2);
+}
+
+/** Hasta 1 decimal, para el Precio del Día en la Pantalla Secundaria. */
+export function formatearPrecioDelDia(valor: number): string {
+  return formatearConDecimalesMax(valor, 1);
 }
 
 /** Cuenta cuántos dígitos hay antes de `posicion` dentro de `texto`. */

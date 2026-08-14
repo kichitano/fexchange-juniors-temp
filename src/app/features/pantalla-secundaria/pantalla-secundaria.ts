@@ -26,10 +26,17 @@ export class PantallaSecundaria {
   );
 
   protected readonly modo = computed<'vista-en-vivo' | 'publicidad' | 'reposo'>(() => {
+    // Forzar publicidad manda incluso sobre una operación en curso: al
+    // presionarlo, publicidadForzada pasa a true sin importar el valor
+    // actual de tipeando, así que el orden de estos checks es lo que decide
+    // quién gana mientras ambos son ciertos a la vez.
+    if (this.publicidadForzada()) {
+      return 'publicidad';
+    }
     if (this.tipeando()) {
       return 'vista-en-vivo';
     }
-    if (this.publicidadForzada() || this.inactivo6Min()) {
+    if (this.inactivo6Min()) {
       return 'publicidad';
     }
     return 'reposo';
@@ -61,10 +68,19 @@ export class PantallaSecundaria {
       this.publicidadForzada.set(true);
     });
 
+    // Cualquier actividad nueva del operador (no solo que "tipeando" pase de
+    // false a true) cancela el forzado: si ya estaba tipeando cuando forzó
+    // la publicidad, "tipeando" se mantiene en true todo el tiempo y nunca
+    // "cambia" de valor, así que no sirve como disparador acá. La marca de
+    // tiempo de actividad, en cambio, cambia con cada tecla.
+    let primeraEjecucionActividad = true;
     effect(() => {
-      if (this.tipeando()) {
-        this.publicidadForzada.set(false);
+      this.sync.ultimaActividad();
+      if (primeraEjecucionActividad) {
+        primeraEjecucionActividad = false;
+        return;
       }
+      this.publicidadForzada.set(false);
     });
   }
 }
