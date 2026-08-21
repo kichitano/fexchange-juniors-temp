@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Diagnóstico Serial · Little Shalom III</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    background: #0a1520; color: #e8edf5; font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    margin: 0; padding: 32px; min-height: 100vh;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #93a3b8; font-size: 14px; margin-bottom: 28px; }
+  .panel {
+    background: #101d30; border: 1px solid #1f3350; border-radius: 12px;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  label { font-size: 13px; color: #93a3b8; }
+  select, button {
+    background: #16233a; color: #e8edf5; border: 1px solid #2a3f5f;
+    border-radius: 8px; padding: 10px 14px; font-size: 14px; cursor: pointer;
+  }
+  button.primary { background: #d99a2b; color: #10151f; border: none; font-weight: 600; }
+  button.primary:hover { background: #eaab3a; }
+  button.danger { background: #3a1f22; border-color: #6b2b30; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #555; }
+  .dot.on { background: #53cb03; box-shadow: 0 0 8px #53cb03; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .log-title { font-size: 13px; color: #93a3b8; margin-bottom: 8px; display:flex; justify-content:space-between; }
+  pre {
+    background: #060c15; border: 1px solid #1f3350; border-radius: 8px; padding: 14px;
+    height: 340px; overflow-y: auto; font-size: 13px; line-height: 1.6; margin: 0;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .hex { color: #7fb8e8; }
+  .txt { color: #e8edf5; }
+  .meta { color: #5c7091; }
+  .hint { font-size: 12px; color: #6b7d99; margin-top: 8px; }
+  .lines-found { background: #12241a; border: 1px solid #2a5c3d; border-radius: 8px; padding: 12px; margin-top: 14px; font-size: 13px; }
+  .lines-found div { padding: 4px 0; border-bottom: 1px dashed #234; }
+  code { background: #16233a; padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Diagnóstico Serial · Little Shalom III</h1>
+<div class="sub">Herramienta temporal para descubrir qué datos manda la contadora por su puerto RS-232/USB-serial. No es parte del proyecto final.</div>
+
+<div class="panel">
+  <div class="row">
+    <label>Baudios:</label>
+    <select id="baud">
+      <option value="9600" selected>9600 (default probable)</option>
+      <option value="2400">2400</option>
+      <option value="4800">4800</option>
+      <option value="19200">19200</option>
+      <option value="38400">38400</option>
+      <option value="115200">115200</option>
+    </select>
+    <label>Data bits:</label>
+    <select id="dataBits">
+      <option value="8" selected>8</option>
+      <option value="7">7</option>
+    </select>
+    <label>Paridad:</label>
+    <select id="parity">
+      <option value="none" selected>none</option>
+      <option value="even">even</option>
+      <option value="odd">odd</option>
+    </select>
+    <label>Stop bits:</label>
+    <select id="stopBits">
+      <option value="1" selected>1</option>
+      <option value="2">2</option>
+    </select>
+  </div>
+  <div class="row">
+    <button class="primary" id="btnConnect">Seleccionar puerto y conectar</button>
+    <button class="danger" id="btnDisconnect" disabled>Desconectar</button>
+    <button id="btnClear">Limpiar log</button>
+    <span class="status"><span class="dot" id="statusDot"></span><span id="statusText">Desconectado</span></span>
+  </div>
+  <div class="hint">
+    1. Conecta la contadora a la PC (por RS-232 con adaptador USB-serial, o por su puerto USB si Windows lo reconoce como puerto COM).<br>
+    2. Presiona "Seleccionar puerto y conectar" y elige el puerto COM correspondiente en el diálogo del navegador.<br>
+    3. Pasa un fajo de billetes por la máquina (o presiona el botón físico de imprimir/reporte si tiene) y observa qué aparece abajo.<br>
+    4. Si no aparece nada en 10-15 segundos, desconecta y prueba con otra velocidad de baudios.
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <div class="log-title"><span>Vista HEX (bytes crudos)</span><span id="byteCount" class="meta">0 bytes</span></div>
+    <pre id="hexLog" class="hex"></pre>
+  </div>
+  <div class="panel">
+    <div class="log-title"><span>Vista TEXTO (decodificado)</span><span></span></div>
+    <pre id="txtLog" class="txt"></pre>
+  </div>
+</div>
+
+<div class="panel" id="linesPanel" style="display:none;">
+  <div class="log-title"><span>Líneas completas detectadas (separadas por salto de línea)</span></div>
+  <div class="lines-found" id="linesFound"></div>
+  <div class="hint">Copia estas líneas tal cual y compártelas — con eso se puede construir el parser real (expresión regular) para la integración en Angular.</div>
+</div>
+
+<script>
+let port = null;
+let reader = null;
+let keepReading = false;
+let buffer = '';
+let byteTotal = 0;
+
+const $ = (id) => document.getElementById(id);
+const hexLog = $('hexLog');
+const txtLog = $('txtLog');
+const linesFound = $('linesFound');
+const linesPanel = $('linesPanel');
+const statusDot = $('statusDot');
+const statusText = $('statusText');
+const byteCount = $('byteCount');
+
+function setConnected(connected) {
+  statusDot.classList.toggle('on', connected);
+  statusText.textContent = connected ? 'Conectado — esperando datos…' : 'Desconectado';
+  $('btnConnect').disabled = connected;
+  $('btnDisconnect').disabled = !connected;
+}
+
+function appendHex(bytes) {
+  const hexStr = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+  hexLog.textContent += hexStr + ' ';
+  hexLog.scrollTop = hexLog.scrollHeight;
+  byteTotal += bytes.length;
+  byteCount.textContent = byteTotal + ' bytes';
+}
+
+function appendText(str) {
+  txtLog.textContent += str;
+  txtLog.scrollTop = txtLog.scrollHeight;
+  buffer += str;
+  if (/[\r\n]/.test(str)) {
+    const parts = buffer.split(/\r\n|\r|\n/);
+    buffer = parts.pop();
+    for (const line of parts) {
+      const clean = line.trim();
+      if (clean.length > 0) {
+        linesPanel.style.display = 'block';
+        const div = document.createElement('div');
+        div.textContent = clean;
+        linesFound.prepend(div);
+      }
+    }
+  }
+}
+
+async function connect() {
+  if (!('serial' in navigator)) {
+    alert('Este navegador no soporta Web Serial API. Usa Chrome, Edge o Brave (no funciona en Firefox/Safari).');
+    return;
+  }
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({
+      baudRate: parseInt($('baud').value, 10),
+      dataBits: parseInt($('dataBits').value, 10),
+      parity: $('parity').value,
+      stopBits: parseInt($('stopBits').value, 10),
+      flowControl: 'none'
+    });
+    setConnected(true);
+    keepReading = true;
+    readLoop();
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo conectar: ' + err.message);
+  }
+}
+
+async function readLoop() {
+  const decoder = new TextDecoder();
+  while (port.readable && keepReading) {
+    reader = port.readable.getReader();
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          appendHex(value);
+          appendText(decoder.decode(value, { stream: true }));
+        }
+      }
+    } catch (err) {
+      console.error('Error de lectura:', err);
+    } finally {
+      reader.releaseLock();
+    }
+  }
+}
+
+async function disconnect() {
+  keepReading = false;
+  try {
+    if (reader) await reader.cancel();
+    if (port) await port.close();
+  } catch (err) {
+    console.error(err);
+  }
+  setConnected(false);
+}
+
+$('btnConnect').addEventListener('click', connect);
+$('btnDisconnect').addEventListener('click', disconnect);
+$('btnClear').addEventListener('click', () => {
+  hexLog.textContent = '';
+  txtLog.textContent = '';
+  linesFound.innerHTML = '';
+  linesPanel.style.display = 'none';
+  byteTotal = 0;
+  byteCount.textContent = '0 bytes';
+});
+</script>
+</body>
+</html>
