@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Diagnóstico USB · Little Shalom III</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    background: #0a1520; color: #e8edf5; font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    margin: 0; padding: 32px; min-height: 100vh;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  .sub { color: #93a3b8; font-size: 14px; margin-bottom: 20px; }
+  .top-links { font-size: 13px; margin-bottom: 24px; }
+  .top-links a { color: #7fb8e8; }
+  .panel {
+    background: #101d30; border: 1px solid #1f3350; border-radius: 12px;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab {
+    background: #16233a; color: #93a3b8; border: 1px solid #2a3f5f;
+    border-radius: 8px 8px 0 0; padding: 10px 16px; font-size: 14px; cursor: pointer;
+  }
+  .tab.active { background: #101d30; color: #e8edf5; border-bottom-color: #101d30; font-weight: 600; }
+  .tabpage { display: none; }
+  .tabpage.active { display: block; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  label { font-size: 13px; color: #93a3b8; }
+  select, button, input[type=text], textarea {
+    background: #16233a; color: #e8edf5; border: 1px solid #2a3f5f;
+    border-radius: 8px; padding: 10px 14px; font-size: 14px;
+  }
+  select, button { cursor: pointer; }
+  button.primary { background: #d99a2b; color: #10151f; border: none; font-weight: 600; }
+  button.primary:hover { background: #eaab3a; }
+  button.danger { background: #3a1f22; border-color: #6b2b30; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #555; }
+  .dot.on { background: #53cb03; box-shadow: 0 0 8px #53cb03; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .log-title { font-size: 13px; color: #93a3b8; margin-bottom: 8px; display:flex; justify-content:space-between; }
+  pre {
+    background: #060c15; border: 1px solid #1f3350; border-radius: 8px; padding: 14px;
+    height: 300px; overflow-y: auto; font-size: 13px; line-height: 1.6; margin: 0;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .hex { color: #7fb8e8; }
+  .txt { color: #e8edf5; }
+  .meta { color: #5c7091; }
+  .hint { font-size: 12px; color: #6b7d99; margin-top: 8px; }
+  .warn { font-size: 12px; color: #eaab3a; margin-top: 8px; }
+  .lines-found { background: #12241a; border: 1px solid #2a5c3d; border-radius: 8px; padding: 12px; margin-top: 14px; font-size: 13px; }
+  .lines-found div { padding: 4px 0; border-bottom: 1px dashed #234; }
+  code { background: #16233a; padding: 2px 6px; border-radius: 4px; }
+  textarea#keyCapture { width: 100%; box-sizing: border-box; height: 90px; font-size: 16px; resize: vertical; }
+  .device-info { font-size: 13px; color: #93a3b8; margin-top: 10px; }
+  .device-info strong { color: #e8edf5; }
+</style>
+</head>
+<body>
+
+<h1>Diagnóstico USB · Little Shalom III</h1>
+<div class="sub">Herramienta temporal para descubrir cómo la contadora expone sus datos por USB. No es parte del proyecto final.</div>
+<div class="top-links">Contraparte por RS-232/adaptador serial: <a href="diagnostico-serial-little-shalom.html">diagnostico-serial-little-shalom.html</a></div>
+
+<div class="panel">
+  <strong>Por qué 3 modos.</strong> Un puerto USB de una contadora de billetes normalmente funciona de una de estas tres formas, y no se sabe cuál hasta probar:
+  <ul>
+    <li><strong>Modo A — Puerto COM virtual (CDC):</strong> el chip USB-serial interno hace que Windows lo vea como un puerto COM más. Se lee igual que RS-232 real. Prueba esto primero con cada uno de los 2 puertos USB.</li>
+    <li><strong>Modo B — Dispositivo HID crudo:</strong> el sistema operativo no le asigna puerto COM; en el Administrador de dispositivos aparece como "dispositivo HID" genérico. Se necesita leer sus "input reports" directamente.</li>
+    <li><strong>Modo C — Teclado emulado (HID keyboard):</strong> el más común en básculas/contadoras baratas. El dispositivo se hace pasar por un teclado USB y "escribe" el número contado directo en el campo de texto que tenga el foco, seguido de Enter o Tab.</li>
+  </ul>
+  <div class="hint">Prueba cada modo con cada uno de los 2 puertos USB de la máquina (uno a la vez). Ficha técnica del fabricante consultada (modelo similar AL-920, Zhejiang Chuanwei): confirma interfaces "USB, RS232" pero no detalla el protocolo — hay que descubrirlo empíricamente.</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="serial">Modo A · COM virtual</div>
+  <div class="tab" data-tab="hid">Modo B · HID crudo</div>
+  <div class="tab" data-tab="keys">Modo C · Teclado emulado</div>
+</div>
+
+<!-- ===================== MODO A: SERIAL ===================== -->
+<div class="tabpage active" id="page-serial">
+  <div class="panel">
+    <div class="row">
+      <label>Baudios:</label>
+      <select id="baud">
+        <option value="9600" selected>9600 (default probable)</option>
+        <option value="2400">2400</option>
+        <option value="4800">4800</option>
+        <option value="19200">19200</option>
+        <option value="38400">38400</option>
+        <option value="115200">115200</option>
+      </select>
+      <label>Data bits:</label>
+      <select id="dataBits">
+        <option value="8" selected>8</option>
+        <option value="7">7</option>
+      </select>
+      <label>Paridad:</label>
+      <select id="parity">
+        <option value="none" selected>none</option>
+        <option value="even">even</option>
+        <option value="odd">odd</option>
+      </select>
+      <label>Stop bits:</label>
+      <select id="stopBits">
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+      </select>
+    </div>
+    <div class="row">
+      <button class="primary" id="btnConnectSerial">Seleccionar puerto y conectar</button>
+      <button class="danger" id="btnDisconnectSerial" disabled>Desconectar</button>
+      <button id="btnClearSerial">Limpiar log</button>
+      <span class="status"><span class="dot" id="serialStatusDot"></span><span id="serialStatusText">Desconectado</span></span>
+    </div>
+    <div class="hint">
+      Si el puerto USB de la máquina aparece en el diálogo como puerto COM (igual que un adaptador USB-serial), este modo funcionará exactamente igual que con RS-232.
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="log-title"><span>Vista HEX (bytes crudos)</span><span id="serialByteCount" class="meta">0 bytes</span></div>
+      <pre id="serialHexLog" class="hex"></pre>
+    </div>
+    <div class="panel">
+      <div class="log-title"><span>Vista TEXTO (decodificado)</span><span></span></div>
+      <pre id="serialTxtLog" class="txt"></pre>
+    </div>
+  </div>
+
+  <div class="panel" id="serialLinesPanel" style="display:none;">
+    <div class="log-title"><span>Líneas completas detectadas</span></div>
+    <div class="lines-found" id="serialLinesFound"></div>
+    <div class="hint">Copia estas líneas tal cual y compártelas — con eso se puede construir el parser real.</div>
+  </div>
+</div>
+
+<!-- ===================== MODO B: HID CRUDO ===================== -->
+<div class="tabpage" id="page-hid">
+  <div class="panel">
+    <div class="row">
+      <button class="primary" id="btnConnectHid">Seleccionar dispositivo HID</button>
+      <button class="danger" id="btnDisconnectHid" disabled>Desconectar</button>
+      <button id="btnClearHid">Limpiar log</button>
+      <span class="status"><span class="dot" id="hidStatusDot"></span><span id="hidStatusText">Desconectado</span></span>
+    </div>
+    <div class="hint">
+      Si Chrome/Edge no soporta WebHID verás un aviso. En el diálogo del navegador aparecen TODOS los dispositivos HID de la PC (teclado, mouse, etc.) — identifica la contadora por su nombre/fabricante.
+    </div>
+    <div class="warn" id="hidUnsupported" style="display:none;">Este navegador no soporta WebHID. Usa Chrome o Edge de escritorio.</div>
+    <div class="device-info" id="hidDeviceInfo"></div>
+  </div>
+
+  <div class="panel">
+    <div class="log-title"><span>Input Reports recibidos (hex)</span><span id="hidReportCount" class="meta">0 reportes</span></div>
+    <pre id="hidLog" class="hex"></pre>
+    <div class="hint">Cada línea es un "input report" completo que mandó el dispositivo (reportId + bytes) al pasar un fajo. Compártelos tal cual.</div>
+  </div>
+</div>
+
+<!-- ===================== MODO C: TECLADO EMULADO ===================== -->
+<div class="tabpage" id="page-keys">
+  <div class="panel">
+    <label for="keyCapture">Haz clic aquí dentro y luego pasa un fajo de billetes por la máquina:</label>
+    <br><br>
+    <textarea id="keyCapture" placeholder="El texto que 'escriba' la contadora aparecerá aquí..." autocomplete="off"></textarea>
+    <div class="row" style="margin-top: 12px;">
+      <button id="btnClearKeys">Limpiar</button>
+      <span class="status"><span class="dot" id="keysDot"></span><span id="keysStatusText">Esperando teclas…</span></span>
+    </div>
+    <div class="hint">
+      Si al pasar el fajo aparecen números escribiéndose solos en el cuadro de arriba (como si alguien tipeara), la máquina funciona en modo teclado emulado (HID keyboard) — el más simple de integrar, no necesita Web Serial ni WebHID, basta con un <code>&lt;input&gt;</code> enfocado.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="log-title"><span>Log de teclas (con timestamp e intervalo)</span><span id="keyEventCount" class="meta">0 eventos</span></div>
+    <pre id="keyLog" class="txt"></pre>
+    <div class="hint">Un intervalo muy corto y regular entre teclas (pocos milisegundos, no como tecleo humano) confirma que es un dispositivo, no una persona escribiendo.</div>
+  </div>
+</div>
+
+<script>
+// ---------- Tabs ----------
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tabpage').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('page-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+const $ = (id) => document.getElementById(id);
+
+// ================= MODO A: SERIAL =================
+(function () {
+  let port = null, reader = null, keepReading = false, buffer = '', byteTotal = 0;
+  const hexLog = $('serialHexLog'), txtLog = $('serialTxtLog');
+  const linesFound = $('serialLinesFound'), linesPanel = $('serialLinesPanel');
+  const statusDot = $('serialStatusDot'), statusText = $('serialStatusText');
+  const byteCount = $('serialByteCount');
+
+  function setConnected(connected) {
+    statusDot.classList.toggle('on', connected);
+    statusText.textContent = connected ? 'Conectado — esperando datos…' : 'Desconectado';
+    $('btnConnectSerial').disabled = connected;
+    $('btnDisconnectSerial').disabled = !connected;
+  }
+
+  function appendHex(bytes) {
+    hexLog.textContent += Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ') + ' ';
+    hexLog.scrollTop = hexLog.scrollHeight;
+    byteTotal += bytes.length;
+    byteCount.textContent = byteTotal + ' bytes';
+  }
+
+  function appendText(str) {
+    txtLog.textContent += str;
+    txtLog.scrollTop = txtLog.scrollHeight;
+    buffer += str;
+    if (/[\r\n]/.test(str)) {
+      const parts = buffer.split(/\r\n|\r|\n/);
+      buffer = parts.pop();
+      for (const line of parts) {
+        const clean = line.trim();
+        if (clean.length > 0) {
+          linesPanel.style.display = 'block';
+          const div = document.createElement('div');
+          div.textContent = clean;
+          linesFound.prepend(div);
+        }
+      }
+    }
+  }
+
+  async function connect() {
+    if (!('serial' in navigator)) {
+      alert('Este navegador no soporta Web Serial API. Usa Chrome, Edge o Brave (no funciona en Firefox/Safari).');
+      return;
+    }
+    try {
+      port = await navigator.serial.requestPort();
+      await port.open({
+        baudRate: parseInt($('baud').value, 10),
+        dataBits: parseInt($('dataBits').value, 10),
+        parity: $('parity').value,
+        stopBits: parseInt($('stopBits').value, 10),
+        flowControl: 'none'
+      });
+      setConnected(true);
+      keepReading = true;
+      readLoop();
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo conectar: ' + err.message);
+    }
+  }
+
+  async function readLoop() {
+    const decoder = new TextDecoder();
+    while (port.readable && keepReading) {
+      reader = port.readable.getReader();
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) {
+            appendHex(value);
+            appendText(decoder.decode(value, { stream: true }));
+          }
+        }
+      } catch (err) {
+        console.error('Error de lectura:', err);
+      } finally {
+        reader.releaseLock();
+      }
+    }
+  }
+
+  async function disconnect() {
+    keepReading = false;
+    try {
+      if (reader) await reader.cancel();
+      if (port) await port.close();
+    } catch (err) {
+      console.error(err);
+    }
+    setConnected(false);
+  }
+
+  $('btnConnectSerial').addEventListener('click', connect);
+  $('btnDisconnectSerial').addEventListener('click', disconnect);
+  $('btnClearSerial').addEventListener('click', () => {
+    hexLog.textContent = '';
+    txtLog.textContent = '';
+    linesFound.innerHTML = '';
+    linesPanel.style.display = 'none';
+    byteTotal = 0;
+    byteCount.textContent = '0 bytes';
+  });
+})();
+
+// ================= MODO B: HID CRUDO =================
+(function () {
+  let hidDevice = null, reportTotal = 0;
+  const hidLog = $('hidLog'), reportCount = $('hidReportCount');
+  const statusDot = $('hidStatusDot'), statusText = $('hidStatusText');
+  const deviceInfo = $('hidDeviceInfo');
+
+  if (!('hid' in navigator)) {
+    $('hidUnsupported').style.display = 'block';
+    $('btnConnectHid').disabled = true;
+  }
+
+  function setConnected(connected) {
+    statusDot.classList.toggle('on', connected);
+    statusText.textContent = connected ? 'Conectado — esperando reportes…' : 'Desconectado';
+    $('btnConnectHid').disabled = connected;
+    $('btnDisconnectHid').disabled = !connected;
+  }
+
+  function handleInputReport(event) {
+    const bytes = new Uint8Array(event.data.buffer);
+    const hexStr = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+    reportTotal++;
+    reportCount.textContent = reportTotal + ' reportes';
+    hidLog.textContent += `[reportId ${event.reportId}] ${hexStr}\n`;
+    hidLog.scrollTop = hidLog.scrollHeight;
+  }
+
+  async function connect() {
+    try {
+      const devices = await navigator.hid.requestDevice({ filters: [] });
+      if (devices.length === 0) return;
+      hidDevice = devices[0];
+      await hidDevice.open();
+      hidDevice.addEventListener('inputreport', handleInputReport);
+      deviceInfo.innerHTML =
+        `<strong>Dispositivo:</strong> ${hidDevice.productName || '(sin nombre)'}<br>` +
+        `<strong>Vendor ID:</strong> 0x${hidDevice.vendorId.toString(16)} &nbsp; ` +
+        `<strong>Product ID:</strong> 0x${hidDevice.productId.toString(16)}<br>` +
+        `<strong>Colecciones:</strong> ${hidDevice.collections.length}`;
+      setConnected(true);
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo conectar: ' + err.message);
+    }
+  }
+
+  async function disconnect() {
+    try {
+      if (hidDevice) {
+        hidDevice.removeEventListener('inputreport', handleInputReport);
+        await hidDevice.close();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setConnected(false);
+  }
+
+  $('btnConnectHid').addEventListener('click', connect);
+  $('btnDisconnectHid').addEventListener('click', disconnect);
+  $('btnClearHid').addEventListener('click', () => {
+    hidLog.textContent = '';
+    reportTotal = 0;
+    reportCount.textContent = '0 reportes';
+  });
+})();
+
+// ================= MODO C: TECLADO EMULADO =================
+(function () {
+  const capture = $('keyCapture'), keyLog = $('keyLog'), keyEventCount = $('keyEventCount');
+  const dot = $('keysDot'), statusText = $('keysStatusText');
+  let lastTs = null, eventTotal = 0;
+
+  capture.addEventListener('focus', () => {
+    dot.classList.add('on');
+    statusText.textContent = 'Foco activo — listo para capturar';
+  });
+  capture.addEventListener('blur', () => {
+    dot.classList.remove('on');
+    statusText.textContent = 'Esperando teclas… (haz clic en el cuadro)';
+  });
+
+  capture.addEventListener('keydown', (e) => {
+    const now = performance.now();
+    const delta = lastTs === null ? '—' : (now - lastTs).toFixed(0) + 'ms';
+    lastTs = now;
+    eventTotal++;
+    keyEventCount.textContent = eventTotal + ' eventos';
+    keyLog.textContent += `key="${e.key}" code=${e.code} Δt=${delta}\n`;
+    keyLog.scrollTop = keyLog.scrollHeight;
+  });
+
+  $('btnClearKeys').addEventListener('click', () => {
+    capture.value = '';
+    keyLog.textContent = '';
+    eventTotal = 0;
+    lastTs = null;
+    keyEventCount.textContent = '0 eventos';
+  });
+})();
+</script>
+</body>
+</html>
