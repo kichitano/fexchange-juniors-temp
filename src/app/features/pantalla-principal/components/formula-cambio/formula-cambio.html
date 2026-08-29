@@ -1,4 +1,13 @@
-<section class="formula" aria-label="Cálculo de cambio">
+<section
+  class="formula"
+  aria-label="Cálculo de cambio"
+  [appHoldToConfirm]="duracionEscapeMs"
+  appHoldToConfirmTecla="escape"
+  [appHoldToConfirmGlobal]="true"
+  (progreso)="progresoEscape.set($event)"
+  (confirmado)="onConfirmadoEscape()"
+  (cancelado)="progresoEscape.set(0)"
+>
   <div class="grupo grupo-monto">
     <div class="fila-etiqueta">
       <span class="etiqueta">Monto a cambiar · {{ config().monedaOrigen }}</span>
@@ -71,7 +80,40 @@
   </div>
 
   <div class="grupo grupo-resultado">
-    <span class="etiqueta">Resultado · {{ config().monedaDestino }}</span>
-    <div class="resultado" appAutoFitTexto [appAutoFitTextoMin]="28">{{ resultadoTexto() }}</div>
+    <div class="fila-etiqueta">
+      <span class="etiqueta">Resultado · {{ config().monedaDestino }}</span>
+      <span class="hint">Presiona <kbd>R</kbd> para enfocar</span>
+    </div>
+    <input
+      #campoResultado
+      class="resultado"
+      type="text"
+      inputmode="decimal"
+      autocomplete="off"
+      [value]="resultadoBuffer()"
+      appAutoFitTexto
+      [appAutoFitTextoMin]="28"
+      (input)="onResultadoInput($event)"
+      (focus)="onFocoConSeleccion($event)"
+      (blur)="onResultadoBlur()"
+    />
+    <div class="hint hint-resultado">
+      Escribe aquí para calcular el monto {{ config().monedaOrigen }} necesario.
+    </div>
+  </div>
+
+  <div
+    class="indicador-escape"
+    [style.--progreso]="progresoEscape()"
+    [class.activo]="progresoEscape() > 0"
+  >
+    <span class="anillo" aria-hidden="true"></span>
+    <span class="texto">
+      @if (progresoEscape() > 0) {
+        Limpiando y forzando publicidad…
+      } @else {
+        Mantén <kbd>Esc</kbd> 1s para limpiar y forzar publicidad
+      }
+    </span>
   </div>
 </section>

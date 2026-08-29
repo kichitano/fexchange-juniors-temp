@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Diagnóstico Impresora · POS-D TP3000 PRO</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    background: #0a1520; color: #e8edf5; font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    margin: 0; padding: 32px; min-height: 100vh;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  .sub { color: #93a3b8; font-size: 14px; margin-bottom: 20px; }
+  .top-links { font-size: 13px; margin-bottom: 24px; }
+  .top-links a { color: #7fb8e8; margin-right: 16px; }
+  .panel {
+    background: #101d30; border: 1px solid #1f3350; border-radius: 12px;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  label { font-size: 13px; color: #93a3b8; display: block; margin-bottom: 4px; }
+  .campo { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
+  select, button, input[type=text], input[type=number] {
+    background: #16233a; color: #e8edf5; border: 1px solid #2a3f5f;
+    border-radius: 8px; padding: 10px 14px; font-size: 14px;
+  }
+  input[type=text], input[type=number], select { width: 100%; box-sizing: border-box; }
+  select, button { cursor: pointer; }
+  button.primary { background: #d99a2b; color: #10151f; border: none; font-weight: 600; }
+  button.primary:hover { background: #eaab3a; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .operador-toggle { display: flex; gap: 8px; }
+  .operador-toggle button { flex: 1; }
+  .operador-toggle button.activo { background: #d99a2b; color: #10151f; border-color: #d99a2b; font-weight: 600; }
+  .hint { font-size: 12px; color: #6b7d99; margin-top: 8px; }
+  .warn { font-size: 12px; color: #eaab3a; margin-top: 8px; }
+  code { background: #16233a; padding: 2px 6px; border-radius: 4px; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #555; }
+  .dot.on { background: #53cb03; box-shadow: 0 0 8px #53cb03; }
+  pre.log {
+    background: #060c15; border: 1px solid #1f3350; border-radius: 8px; padding: 14px;
+    height: 140px; overflow-y: auto; font-size: 12px; line-height: 1.6; margin: 8px 0 0;
+    white-space: pre-wrap; word-break: break-all; color: #7fb8e8;
+  }
+
+  /* ---- Vista previa del ticket: papel blanco, como se ve realmente ---- */
+  .previsualizacion {
+    background: #1c2944;
+    border: 1px dashed #3a4972;
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+  }
+  #ticket {
+    background: #ffffff;
+    color: #000000;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    padding: 10px 8px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+  }
+  #ticket.ancho-58 { width: 200px; }
+  #ticket.ancho-80 { width: 280px; }
+  #ticket .centrado { text-align: center; }
+  #ticket .titulo { font-weight: bold; font-size: 13px; }
+  #ticket .separador { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+  #ticket .fila { display: flex; justify-content: space-between; gap: 8px; }
+  #ticket .fila.destacada { font-weight: bold; font-size: 13px; }
+  #ticket .pie { margin-top: 6px; }
+
+  @media print {
+    body * { visibility: hidden; }
+    .previsualizacion, .previsualizacion * { visibility: visible; }
+    .previsualizacion {
+      position: absolute; top: 0; left: 0; background: #fff; border: none; padding: 0;
+    }
+    #ticket { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Diagnóstico Impresora · POS-D TP3000 PRO</h1>
+<div class="sub">Herramienta temporal para probar cómo imprimir un ticket corto (monto, precio, resultado) en la térmica USB. No es parte del proyecto final.</div>
+<div class="top-links">
+  Contadora de billetes: <a href="diagnostico-serial-little-shalom.html">diagnostico-serial-little-shalom.html</a>
+  <a href="diagnostico-usb-little-shalom.html">diagnostico-usb-little-shalom.html</a>
+</div>
+
+<div class="panel">
+  <strong>Por qué 2 modos.</strong> No sabemos aún si Windows tiene un driver instalado para esta impresora, así que hay dos caminos:
+  <ul>
+    <li><strong>Modo A — Diálogo de impresión del navegador (recomendado, probar primero):</strong> si la POS-D TP3000 PRO aparece como una impresora normal en Windows (Configuración → Impresoras y escáneres), este modo funciona sin saber nada de su protocolo — el driver de Windows se encarga de todo. Es la ruta más simple y la más probable de funcionar de entrada.</li>
+    <li><strong>Modo B — WebUSB crudo (ESC/POS, experimental):</strong> le manda bytes ESC/POS directo al dispositivo por USB, sin pasar por ningún driver. Solo funciona si <em>Windows no tiene instalado</em> un driver de impresora para el puerto (si lo tiene, Windows retiene la interfaz USB y WebUSB no puede reclamarla — típico "Access denied" al conectar). Útil si Modo A no encuentra la impresora en la lista de Windows.</li>
+  </ul>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Datos del ticket</h2>
+    <div class="row">
+      <div class="campo">
+        <label>Monto</label>
+        <input type="number" id="monto" value="1000" min="0" step="1">
+      </div>
+      <div class="campo">
+        <label>Moneda origen</label>
+        <select id="monedaOrigen">
+          <option value="CLP" selected>CLP</option>
+          <option value="PEN">PEN</option>
+          <option value="USD">USD</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="campo">
+        <label>Operador</label>
+        <div class="operador-toggle">
+          <button type="button" id="btnMultiplicar" class="activo">× multiplicar</button>
+          <button type="button" id="btnDividir">÷ dividir</button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="campo">
+        <label>Tasa</label>
+        <input type="number" id="tasa" value="0.0038" min="0" step="any">
+      </div>
+      <div class="campo">
+        <label>Moneda destino</label>
+        <select id="monedaDestino">
+          <option value="CLP">CLP</option>
+          <option value="PEN" selected>PEN</option>
+          <option value="USD">USD</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="campo">
+        <label>Ancho de papel</label>
+        <select id="anchoPapel">
+          <option value="58" selected>58 mm</option>
+          <option value="80">80 mm</option>
+        </select>
+      </div>
+    </div>
+    <div class="hint">El resultado se calcula solo (misma fórmula que la app: × multiplica, ÷ divide) y el ticket de la derecha se actualiza en vivo.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Vista previa</h2>
+    <div class="previsualizacion">
+      <div id="ticket" class="ancho-58">
+        <div class="centrado titulo">CASA DE CAMBIO JUNIORS</div>
+        <hr class="separador">
+        <div class="fila"><span id="ticketFecha"></span><span id="ticketHora"></span></div>
+        <hr class="separador">
+        <div class="fila"><span>Monto</span><span id="ticketMonto"></span></div>
+        <div class="fila"><span>Tasa</span><span id="ticketTasa"></span></div>
+        <hr class="separador">
+        <div class="fila destacada"><span>Resultado</span><span id="ticketResultado"></span></div>
+        <hr class="separador">
+        <div class="centrado pie">¡Gracias por su cambio!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODO A: IMPRESIÓN DEL NAVEGADOR ===================== -->
+<div class="panel">
+  <h2>Modo A · Diálogo de impresión del navegador</h2>
+  <div class="row">
+    <button class="primary" id="btnImprimirNavegador">Imprimir ticket</button>
+  </div>
+  <div class="hint">
+    Abre el diálogo de impresión estándar. Elige la POS-D TP3000 PRO en la lista de impresoras (si Windows la detectó e instaló un driver para ella).
+    Si no aparece en la lista, prueba a instalarla desde <code>Configuración → Bluetooth y dispositivos → Impresoras y escáneres → Agregar dispositivo</code>, o el CD/instalador que trae la impresora.
+  </div>
+</div>
+
+<!-- ===================== MODO B: WEBUSB CRUDO ===================== -->
+<div class="panel">
+  <h2>Modo B · WebUSB crudo (ESC/POS)</h2>
+  <div class="row">
+    <button class="primary" id="btnConectarUsb">Seleccionar impresora USB</button>
+    <button id="btnImprimirUsb" disabled>Enviar ticket (ESC/POS)</button>
+    <span class="status"><span class="dot" id="usbStatusDot"></span><span id="usbStatusText">Desconectado</span></span>
+  </div>
+  <div class="warn" id="usbUnsupported" style="display:none;">Este navegador no soporta WebUSB. Usa Chrome o Edge de escritorio.</div>
+  <div class="hint">
+    En el diálogo aparecen todos los dispositivos USB de la PC — identifica la impresora por su nombre/fabricante. Si falla con un error de acceso/interfaz ocupada, es porque Windows ya tiene un driver controlando el puerto (usa Modo A en ese caso, o desinstala el driver desde el Administrador de dispositivos si quieres forzar Modo B).
+    <br>Nota de codificación: para evitar caracteres corruptos, este modo envía el texto sin tildes/ñ (las impresoras térmicas ESC/POS normalmente no usan UTF-8). El Modo A no tiene este problema porque el navegador rasteriza el texto antes de imprimir.
+  </div>
+  <div class="log-title" style="font-size:13px;color:#93a3b8;margin-top:10px;">Log</div>
+  <pre class="log" id="usbLog"></pre>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ---------- Cálculo compartido (misma fórmula que la app real) ----------
+let operadorActual = 'multiplicar';
+
+function calcularResultado(monto, operador, tasa) {
+  if (operador === 'multiplicar') return monto * tasa;
+  return tasa === 0 ? 0 : monto / tasa;
+}
+
+function formatearNumero(valor) {
+  const negativo = valor < 0;
+  const fijo = Math.abs(valor).toFixed(2);
+  const [entero, decimales] = fijo.split('.');
+  const enteroConEspacios = entero.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return `${negativo ? '-' : ''}${enteroConEspacios},${decimales}`;
+}
+
+function quitarAcentos(texto) {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ñ/gi, (m) => m === 'ñ' ? 'n' : 'N');
+}
+
+function leerDatosTicket() {
+  const monto = Number($('monto').value) || 0;
+  const tasa = Number($('tasa').value) || 0;
+  const monedaOrigen = $('monedaOrigen').value;
+  const monedaDestino = $('monedaDestino').value;
+  const resultado = calcularResultado(monto, operadorActual, tasa);
+  return { monto, tasa, monedaOrigen, monedaDestino, resultado, operador: operadorActual };
+}
+
+function actualizarVistaPrevia() {
+  const d = leerDatosTicket();
+  const ahora = new Date();
+  $('ticketFecha').textContent = ahora.toLocaleDateString('es-CL');
+  $('ticketHora').textContent = ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  $('ticketMonto').textContent = `${formatearNumero(d.monto)} ${d.monedaOrigen}`;
+  $('ticketTasa').textContent = `${d.operador === 'multiplicar' ? 'x' : '/'} ${d.tasa}`;
+  $('ticketResultado').textContent = `${formatearNumero(d.resultado)} ${d.monedaDestino}`;
+
+  const ticket = $('ticket');
+  ticket.classList.toggle('ancho-58', $('anchoPapel').value === '58');
+  ticket.classList.toggle('ancho-80', $('anchoPapel').value === '80');
+}
+
+['monto', 'tasa', 'monedaOrigen', 'monedaDestino', 'anchoPapel'].forEach((id) => {
+  $(id).addEventListener('input', actualizarVistaPrevia);
+  $(id).addEventListener('change', actualizarVistaPrevia);
+});
+
+$('btnMultiplicar').addEventListener('click', () => {
+  operadorActual = 'multiplicar';
+  $('btnMultiplicar').classList.add('activo');
+  $('btnDividir').classList.remove('activo');
+  actualizarVistaPrevia();
+});
+$('btnDividir').addEventListener('click', () => {
+  operadorActual = 'dividir';
+  $('btnDividir').classList.add('activo');
+  $('btnMultiplicar').classList.remove('activo');
+  actualizarVistaPrevia();
+});
+
+actualizarVistaPrevia();
+
+// ================= MODO A: IMPRESIÓN DEL NAVEGADOR =================
+$('btnImprimirNavegador').addEventListener('click', () => {
+  actualizarVistaPrevia();
+  window.print();
+});
+
+// ================= MODO B: WEBUSB CRUDO (ESC/POS) =================
+(function () {
+  let device = null, endpointOut = null;
+  const log = $('usbLog');
+  const statusDot = $('usbStatusDot'), statusText = $('usbStatusText');
+
+  if (!('usb' in navigator)) {
+    $('usbUnsupported').style.display = 'block';
+    $('btnConectarUsb').disabled = true;
+  }
+
+  function escribirLog(linea) {
+    log.textContent += linea + '\n';
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function setConectado(conectado) {
+    statusDot.classList.toggle('on', conectado);
+    statusText.textContent = conectado ? `Conectado — ${device.productName || 'dispositivo USB'}` : 'Desconectado';
+    $('btnImprimirUsb').disabled = !conectado;
+  }
+
+  async function conectar() {
+    try {
+      device = await navigator.usb.requestDevice({ filters: [] });
+      await device.open();
+      if (device.configuration === null) {
+        await device.selectConfiguration(1);
+      }
+      const iface = device.configuration.interfaces.find((i) =>
+        i.alternates[0].endpoints.some((e) => e.direction === 'out'),
+      );
+      if (!iface) {
+        throw new Error('No se encontró una interfaz USB con endpoint de salida.');
+      }
+      await device.claimInterface(iface.interfaceNumber);
+      endpointOut = iface.alternates[0].endpoints.find((e) => e.direction === 'out').endpointNumber;
+      escribirLog(`Conectado: ${device.productName || '(sin nombre)'} — VID 0x${device.vendorId.toString(16)} PID 0x${device.productId.toString(16)}`);
+      escribirLog(`Interfaz ${iface.interfaceNumber}, endpoint OUT ${endpointOut}`);
+      setConectado(true);
+    } catch (err) {
+      escribirLog('Error al conectar: ' + err.message);
+      alert('No se pudo conectar: ' + err.message + '\n\nSi el error menciona acceso denegado o interfaz ocupada, Windows probablemente ya tiene un driver controlando esta impresora — usa el Modo A en ese caso.');
+    }
+  }
+
+  function construirTicketEscPos() {
+    const d = leerDatosTicket();
+    const ESC = '\x1B', GS = '\x1D';
+    const init = ESC + '@';
+    const centrar = ESC + 'a' + '\x01';
+    const izquierda = ESC + 'a' + '\x00';
+    const negritaOn = ESC + 'E' + '\x01';
+    const negritaOff = ESC + 'E' + '\x00';
+    const cortar = GS + 'V' + '\x01';
+
+    const lineas = [
+      centrar + negritaOn + 'CASA DE CAMBIO JUNIORS' + negritaOff,
+      '--------------------------------',
+      izquierda + `Fecha: ${new Date().toLocaleDateString('es-CL')}  Hora: ${new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`,
+      '--------------------------------',
+      `Monto:      ${formatearNumero(d.monto)} ${d.monedaOrigen}`,
+      `Tasa:       ${d.operador === 'multiplicar' ? 'x' : '/'} ${d.tasa}`,
+      '--------------------------------',
+      negritaOn + `Resultado:  ${formatearNumero(d.resultado)} ${d.monedaDestino}` + negritaOff,
+      '--------------------------------',
+      centrar + 'Gracias por su cambio!',
+      '\n\n\n',
+    ];
+
+    const texto = init + quitarAcentos(lineas.join('\n')) + '\n' + cortar;
+    return new TextEncoder().encode(texto);
+  }
+
+  async function imprimir() {
+    try {
+      const datos = construirTicketEscPos();
+      await device.transferOut(endpointOut, datos);
+      escribirLog(`Enviados ${datos.length} bytes al endpoint ${endpointOut}.`);
+    } catch (err) {
+      escribirLog('Error al imprimir: ' + err.message);
+      alert('No se pudo enviar el ticket: ' + err.message);
+    }
+  }
+
+  $('btnConectarUsb').addEventListener('click', conectar);
+  $('btnImprimirUsb').addEventListener('click', imprimir);
+})();
+</script>
+</body>
+</html>

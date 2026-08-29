@@ -23,6 +23,7 @@ import {
 } from '../../../../shared/utils/formato-monto';
 
 const DURACION_CONFIRMACION_MS = 1000;
+const DURACION_ESCAPE_MS = 1000;
 
 @Component({
   selector: 'app-formula-cambio',
@@ -37,14 +38,24 @@ export class FormulaCambio {
   private readonly sync = inject(SyncService);
 
   protected readonly duracionMs = DURACION_CONFIRMACION_MS;
+  protected readonly duracionEscapeMs = DURACION_ESCAPE_MS;
   protected readonly monto = signal(0);
   protected readonly tasaBuffer = signal('');
+  protected readonly resultadoBuffer = signal('');
   protected readonly progreso = signal(0);
+  protected readonly progresoEscape = signal(0);
 
   protected readonly config = this.configuracion.configActiva;
 
   private readonly campoMontoRef = viewChild<ElementRef<HTMLInputElement>>('campoMonto');
   private readonly campoTasaRef = viewChild<ElementRef<HTMLInputElement>>('campoTasa');
+  private readonly campoResultadoRef = viewChild<ElementRef<HTMLInputElement>>('campoResultado');
+
+  // Puesto en true justo antes de recalcular `monto` a partir de lo que el
+  // operador tipeó en el campo resultado: evita que el efecto de abajo pise
+  // ese texto con el resultado "hacia adelante" (con decimales) mientras
+  // todavía está escribiendo.
+  private ignorarProximaSincronizacionResultado = false;
 
   constructor() {
     effect(() => {
@@ -68,6 +79,15 @@ export class FormulaCambio {
         montoResultado: resultado,
       });
     });
+
+    effect(() => {
+      const texto = this.resultadoTexto();
+      if (this.ignorarProximaSincronizacionResultado) {
+        this.ignorarProximaSincronizacionResultado = false;
+        return;
+      }
+      this.resultadoBuffer.set(texto);
+    });
   }
 
   @HostListener('document:keydown', ['$event'])
@@ -78,7 +98,8 @@ export class FormulaCambio {
     const activo = document.activeElement;
     const campoMonto = this.campoMontoRef()?.nativeElement;
     const campoTasa = this.campoTasaRef()?.nativeElement;
-    const enCampoPropio = activo === campoMonto || activo === campoTasa;
+    const campoResultado = this.campoResultadoRef()?.nativeElement;
+    const enCampoPropio = activo === campoMonto || activo === campoTasa || activo === campoResultado;
     const enOtroControl =
       !enCampoPropio &&
       activo instanceof HTMLElement &&
@@ -94,6 +115,9 @@ export class FormulaCambio {
     } else if (tecla === 't') {
       evento.preventDefault();
       this.enfocarYSeleccionar(campoTasa);
+    } else if (tecla === 'r') {
+      evento.preventDefault();
+      this.enfocarYSeleccionar(campoResultado);
     }
   }
 
@@ -147,6 +171,39 @@ export class FormulaCambio {
 
   protected onTasaBlur(): void {
     this.tasaBuffer.set(formatearTasa(this.config().tasa));
+  }
+
+  /**
+   * Campo resultado editable: permite que el operador escriba directamente
+   * el monto deseado en la moneda de destino (p. ej. un cliente que pregunta
+   * "¿cuánto son 100 soles en pesos?") y calcula hacia atrás el monto de
+   * origen que produce ese resultado, con la operación invertida.
+   */
+  protected onResultadoInput(evento: Event): void {
+    const input = evento.target as HTMLInputElement;
+    this.resultadoBuffer.set(input.value);
+    const numero = Number(input.value.replace(/\s/g, '').replace(',', '.'));
+    if (Number.isFinite(numero)) {
+      this.ignorarProximaSincronizacionResultado = true;
+      this.monto.set(this.configuracion.calcularMontoInverso(numero, this.config()));
+    }
+    this.sync.enviarActividad();
+  }
+
+  protected onResultadoBlur(): void {
+    this.resultadoBuffer.set(this.resultadoTexto());
+  }
+
+  /**
+   * Escape sostenido 1s: limpia el monto en curso y fuerza publicidad en la
+   * Pantalla Secundaria (igual que el botón "Forzar publicidad" del control
+   * del popup). No envía actividad — enviarla cancelaría el forzado apenas
+   * se aplica, ver el efecto de ultimaActividad en PantallaSecundaria.
+   */
+  protected onConfirmadoEscape(): void {
+    this.progresoEscape.set(0);
+    this.monto.set(0);
+    this.sync.enviarForzarPublicidad();
   }
 
   protected onConfirmado(): void {

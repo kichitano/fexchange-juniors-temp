@@ -64,6 +64,14 @@ export class ConfiguracionCambioService {
     return config.tasa === 0 ? 0 : monto / config.tasa;
   }
 
+  /** Inversa de calcularResultado: dado un resultado deseado, qué monto lo produce. */
+  calcularMontoInverso(resultado: number, config: TipoCambioConfig): number {
+    if (config.operador === 'multiplicar') {
+      return config.tasa === 0 ? 0 : resultado / config.tasa;
+    }
+    return resultado * config.tasa;
+  }
+
   private actualizarConfigActiva(actualizar: (config: TipoCambioConfig) => TipoCambioConfig): void {
     const { origen, destino } = this.parActivo();
     const clave = claveTipoCambio(origen, destino);
