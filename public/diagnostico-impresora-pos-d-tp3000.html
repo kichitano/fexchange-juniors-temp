@@ -60,19 +60,29 @@
     background: #ffffff;
     color: #000000;
     font-family: 'Courier New', Consolas, monospace;
-    font-size: 12px;
+    font-weight: 500;
+    font-size: 3.4mm;
     line-height: 1.45;
-    padding: 10px 8px;
+    padding: 2mm 0;
+    /* Margen inferior real antes del corte: sin esto la última línea queda
+       pegada a donde la cuchilla corta el papel. */
+    padding-bottom: 14mm;
     box-shadow: 0 4px 18px rgba(0,0,0,0.35);
   }
-  #ticket.ancho-58 { width: 200px; }
-  #ticket.ancho-80 { width: 280px; }
+  /* Ancho = área imprimible real, no el ancho del rollo: en un rollo de
+     80mm la cabeza térmica solo llega a ~72mm; en 58mm, a ~48mm. Se usan
+     mm (unidad física) en vez de px para que en pantalla e impresión el
+     ticket ocupe siempre el mismo ancho real, sin depender del tamaño de
+     página que asuma el navegador. */
+  #ticket.ancho-58 { width: 48mm; }
+  #ticket.ancho-80 { width: 72mm; }
   #ticket .centrado { text-align: center; }
-  #ticket .titulo { font-weight: bold; font-size: 13px; }
-  #ticket .separador { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+  #ticket .titulo { font-weight: 700; font-size: 3.8mm; }
+  #ticket .separador { border: none; border-top: 1px dashed #000; margin: 1.5mm 0; }
   #ticket .fila { display: flex; justify-content: space-between; gap: 8px; }
-  #ticket .fila.destacada { font-weight: bold; font-size: 13px; }
-  #ticket .pie { margin-top: 6px; }
+  #ticket .fila.destacada { font-weight: 700; font-size: 3.8mm; }
+  #ticket .pie { margin-top: 1.5mm; }
+  #ticket .aviso-legal { margin-top: 1mm; font-size: 2.6mm; white-space: nowrap; }
 
   @media print {
     body * { visibility: hidden; }
@@ -83,6 +93,11 @@
     #ticket { box-shadow: none; }
   }
 </style>
+<!-- @page se reescribe por JS (actualizarEstiloPagina) según el ancho de papel elegido,
+     para que la página de impresión tenga exactamente el tamaño físico del rollo en vez
+     del tamaño Carta/A4 por defecto — esa era la causa de que el ticket saliera angosto
+     y pegado a un lado de la hoja en vez de ocupar todo el ancho. -->
+<style id="estiloPagina"></style>
 </head>
 <body>
 
@@ -94,11 +109,22 @@
 </div>
 
 <div class="panel">
+  <strong>Ficha técnica real (POS-D TP-300 PRO, el nombre correcto del modelo):</strong> rollo de <strong>80mm</strong> (no 58mm), ~72mm de área imprimible, 203dpi, emulación ESC/POS, corte automático parcial. No existe versión de 58mm de esta impresora — por eso el selector de ancho de papel abajo ahora inicia en 80mm.
+</div>
+
+<div class="panel">
   <strong>Por qué 2 modos.</strong> No sabemos aún si Windows tiene un driver instalado para esta impresora, así que hay dos caminos:
   <ul>
-    <li><strong>Modo A — Diálogo de impresión del navegador (recomendado, probar primero):</strong> si la POS-D TP3000 PRO aparece como una impresora normal en Windows (Configuración → Impresoras y escáneres), este modo funciona sin saber nada de su protocolo — el driver de Windows se encarga de todo. Es la ruta más simple y la más probable de funcionar de entrada.</li>
-    <li><strong>Modo B — WebUSB crudo (ESC/POS, experimental):</strong> le manda bytes ESC/POS directo al dispositivo por USB, sin pasar por ningún driver. Solo funciona si <em>Windows no tiene instalado</em> un driver de impresora para el puerto (si lo tiene, Windows retiene la interfaz USB y WebUSB no puede reclamarla — típico "Access denied" al conectar). Útil si Modo A no encuentra la impresora en la lista de Windows.</li>
+    <li><strong>Modo A — Diálogo de impresión del navegador (recomendado, probar primero):</strong> si la POS-D TP-300 PRO aparece como una impresora normal en Windows (Configuración → Impresoras y escáneres), este modo funciona sin saber nada de su protocolo — el driver de Windows se encarga de todo. Es la ruta más simple y la más probable de funcionar de entrada.</li>
+    <li><strong>Modo B — WebUSB crudo (ESC/POS, experimental):</strong> le manda bytes ESC/POS directo al dispositivo por USB, sin pasar por ningún driver. Solo funciona si <em>Windows no tiene instalado</em> un driver de impresora para el puerto (si lo tiene, Windows retiene la interfaz USB y WebUSB no puede reclamarla — típico "Access denied" al conectar, esto es justo lo que pasó en la primera prueba). Útil si Modo A no encuentra la impresora en la lista de Windows.</li>
   </ul>
+  <div class="warn">
+    Sobre imprimir "directo, sin diálogo": ningún sitio web puede saltarse el diálogo de impresión del navegador por su cuenta (es una protección de seguridad del navegador, no algo que se pueda desactivar desde el código). Las dos formas reales de lograrlo con el Modo A (que es el que ya funciona bien):
+    <ol style="margin:6px 0 0 18px; padding:0;">
+      <li>Abrir Chrome/Edge con la bandera <code>--kiosk-printing</code>, que imprime directo a la impresora predeterminada de Windows sin mostrar el diálogo. Ejemplo de acceso directo: <code>"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing "https://kichitano.github.io/fexchange-juniors-temp/"</code>. Es la técnica estándar que usan los sistemas de punto de venta basados en navegador.</li>
+      <li>Dejar la POS-D TP-300 PRO como impresora predeterminada de Windows, para que el diálogo ya aparezca con ella preseleccionada y solo haga falta un Enter/clic en "Imprimir".</li>
+    </ol>
+  </div>
 </div>
 
 <div class="grid">
@@ -145,8 +171,8 @@
       <div class="campo">
         <label>Ancho de papel</label>
         <select id="anchoPapel">
-          <option value="58" selected>58 mm</option>
-          <option value="80">80 mm</option>
+          <option value="80" selected>80 mm (rollo real de esta impresora)</option>
+          <option value="58">58 mm</option>
         </select>
       </div>
     </div>
@@ -156,7 +182,7 @@
   <div class="panel">
     <h2>Vista previa</h2>
     <div class="previsualizacion">
-      <div id="ticket" class="ancho-58">
+      <div id="ticket" class="ancho-80">
         <div class="centrado titulo">CASA DE CAMBIO JUNIORS</div>
         <hr class="separador">
         <div class="fila"><span id="ticketFecha"></span><span id="ticketHora"></span></div>
@@ -167,6 +193,7 @@
         <div class="fila destacada"><span>Resultado</span><span id="ticketResultado"></span></div>
         <hr class="separador">
         <div class="centrado pie">¡Gracias por su cambio!</div>
+        <div class="centrado aviso-legal">Ticket sin validez legal</div>
       </div>
     </div>
   </div>
@@ -212,12 +239,14 @@ function calcularResultado(monto, operador, tasa) {
   return tasa === 0 ? 0 : monto / tasa;
 }
 
+// Punto para los decimales (no coma): a los clientes les confunde ver
+// "1,20" — lo leen como mil doscientos en vez de uno con veinte.
 function formatearNumero(valor) {
   const negativo = valor < 0;
   const fijo = Math.abs(valor).toFixed(2);
   const [entero, decimales] = fijo.split('.');
   const enteroConEspacios = entero.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-  return `${negativo ? '-' : ''}${enteroConEspacios},${decimales}`;
+  return `${negativo ? '-' : ''}${enteroConEspacios}.${decimales}`;
 }
 
 function quitarAcentos(texto) {
@@ -233,6 +262,10 @@ function leerDatosTicket() {
   return { monto, tasa, monedaOrigen, monedaDestino, resultado, operador: operadorActual };
 }
 
+// mm de área imprimible real por ancho de rollo (no el ancho del rollo en
+// sí): en 80mm la cabeza térmica llega a ~72mm, en 58mm a ~48mm.
+const AREA_IMPRIMIBLE_MM = { '58': 48, '80': 72 };
+
 function actualizarVistaPrevia() {
   const d = leerDatosTicket();
   const ahora = new Date();
@@ -245,6 +278,15 @@ function actualizarVistaPrevia() {
   const ticket = $('ticket');
   ticket.classList.toggle('ancho-58', $('anchoPapel').value === '58');
   ticket.classList.toggle('ancho-80', $('anchoPapel').value === '80');
+  actualizarEstiloPagina();
+}
+
+// Reescribe @page con el tamaño físico real del rollo elegido: sin esto el
+// navegador imprime asumiendo tamaño Carta/A4, lo que dejaba el ticket
+// angosto y pegado a un lado de la hoja en vez de usar todo el ancho.
+function actualizarEstiloPagina() {
+  const ancho = AREA_IMPRIMIBLE_MM[$('anchoPapel').value];
+  $('estiloPagina').textContent = `@page { size: ${ancho}mm auto; margin: 0; }`;
 }
 
 ['monto', 'tasa', 'monedaOrigen', 'monedaDestino', 'anchoPapel'].forEach((id) => {
@@ -302,49 +344,112 @@ $('btnImprimirNavegador').addEventListener('click', () => {
       if (device.configuration === null) {
         await device.selectConfiguration(1);
       }
-      const iface = device.configuration.interfaces.find((i) =>
+      // Probar TODAS las interfaces con endpoint de salida, no solo la
+      // primera: si Windows ya tiene un driver reteniendo una, claimInterface
+      // lanza error para esa pero puede haber otra libre (algunas impresoras
+      // exponen más de una interfaz USB). Recién si todas fallan, se rinde.
+      const candidatas = device.configuration.interfaces.filter((i) =>
         i.alternates[0].endpoints.some((e) => e.direction === 'out'),
       );
-      if (!iface) {
+      if (candidatas.length === 0) {
         throw new Error('No se encontró una interfaz USB con endpoint de salida.');
       }
-      await device.claimInterface(iface.interfaceNumber);
-      endpointOut = iface.alternates[0].endpoints.find((e) => e.direction === 'out').endpointNumber;
+      let ifaceUsada = null, ultimoError = null;
+      for (const iface of candidatas) {
+        try {
+          await device.claimInterface(iface.interfaceNumber);
+          ifaceUsada = iface;
+          break;
+        } catch (err) {
+          ultimoError = err;
+          escribirLog(`Interfaz ${iface.interfaceNumber} no disponible: ${err.message}`);
+        }
+      }
+      if (!ifaceUsada) {
+        throw ultimoError || new Error('Ninguna interfaz pudo reclamarse.');
+      }
+      endpointOut = ifaceUsada.alternates[0].endpoints.find((e) => e.direction === 'out').endpointNumber;
       escribirLog(`Conectado: ${device.productName || '(sin nombre)'} — VID 0x${device.vendorId.toString(16)} PID 0x${device.productId.toString(16)}`);
-      escribirLog(`Interfaz ${iface.interfaceNumber}, endpoint OUT ${endpointOut}`);
+      escribirLog(`Interfaz ${ifaceUsada.interfaceNumber}, endpoint OUT ${endpointOut}`);
       setConectado(true);
     } catch (err) {
       escribirLog('Error al conectar: ' + err.message);
-      alert('No se pudo conectar: ' + err.message + '\n\nSi el error menciona acceso denegado o interfaz ocupada, Windows probablemente ya tiene un driver controlando esta impresora — usa el Modo A en ese caso.');
+      alert('No se pudo conectar: ' + err.message + '\n\nSi el error menciona acceso denegado o interfaz ocupada, Windows probablemente ya tiene un driver controlando esta impresora — usa el Modo A en ese caso, o desinstálalo desde el Administrador de dispositivos si quieres forzar este modo.');
     }
+  }
+
+  // ---- Construcción de bytes ESC/POS: NUNCA pasar bytes >127 (como el de
+  // calor/densidad de abajo) por TextEncoder — codifica a UTF-8 multibyte y
+  // corrompe el valor. Los comandos van como arrays de bytes crudos; solo el
+  // texto (ya sin tildes/ñ, por lo tanto ASCII) se convierte char a char. ----
+  function comando(...bytes) {
+    return Uint8Array.from(bytes);
+  }
+  function textoAscii(str) {
+    const limpio = quitarAcentos(str);
+    return Uint8Array.from(Array.from(limpio).map((c) => c.charCodeAt(0) & 0xff));
+  }
+  function concatBytes(partes) {
+    const total = partes.reduce((acc, p) => acc + p.length, 0);
+    const resultado = new Uint8Array(total);
+    let offset = 0;
+    for (const p of partes) {
+      resultado.set(p, offset);
+      offset += p.length;
+    }
+    return resultado;
+  }
+
+  // Alinea "izq" y "der" a los extremos de una línea de `ancho` columnas,
+  // como hace la vista previa en HTML pero para texto de ancho fijo.
+  function filaFija(izquierda, derecha, ancho) {
+    const espacio = Math.max(1, ancho - izquierda.length - derecha.length);
+    return izquierda + ' '.repeat(espacio) + derecha;
   }
 
   function construirTicketEscPos() {
     const d = leerDatosTicket();
-    const ESC = '\x1B', GS = '\x1D';
-    const init = ESC + '@';
-    const centrar = ESC + 'a' + '\x01';
-    const izquierda = ESC + 'a' + '\x00';
-    const negritaOn = ESC + 'E' + '\x01';
-    const negritaOff = ESC + 'E' + '\x00';
-    const cortar = GS + 'V' + '\x01';
+    const ancho = $('anchoPapel').value === '58' ? 32 : 48; // columnas a 203dpi, fuente 12x24
+    const separador = textoAscii('-'.repeat(ancho) + '\n');
 
-    const lineas = [
-      centrar + negritaOn + 'CASA DE CAMBIO JUNIORS' + negritaOff,
-      '--------------------------------',
-      izquierda + `Fecha: ${new Date().toLocaleDateString('es-CL')}  Hora: ${new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`,
-      '--------------------------------',
-      `Monto:      ${formatearNumero(d.monto)} ${d.monedaOrigen}`,
-      `Tasa:       ${d.operador === 'multiplicar' ? 'x' : '/'} ${d.tasa}`,
-      '--------------------------------',
-      negritaOn + `Resultado:  ${formatearNumero(d.resultado)} ${d.monedaDestino}` + negritaOff,
-      '--------------------------------',
-      centrar + 'Gracias por su cambio!',
-      '\n\n\n',
-    ];
+    const init = comando(0x1b, 0x40); // ESC @: inicializar
+    // ESC 7 n1 n2 n3: parámetros de calor. Se sube el tiempo de calor (n2)
+    // sobre el default típico (80) para que el texto sin negrita salga más
+    // oscuro/quemado, no solo el negrita.
+    const calor = comando(0x1b, 0x37, 0x09, 0xc8, 0x02);
+    const centrar = comando(0x1b, 0x61, 0x01);
+    const izquierda = comando(0x1b, 0x61, 0x00);
+    const negritaOn = comando(0x1b, 0x45, 0x01);
+    const negritaOff = comando(0x1b, 0x45, 0x00);
+    // ESC d n: avanza n líneas antes de cortar, para que quede margen real
+    // debajo del texto (antes casi no había separación con el corte).
+    const avanceFinal = comando(0x1b, 0x64, 0x06);
+    const cortar = comando(0x1d, 0x56, 0x01); // GS V 1: corte parcial
 
-    const texto = init + quitarAcentos(lineas.join('\n')) + '\n' + cortar;
-    return new TextEncoder().encode(texto);
+    const fechaHora = `${new Date().toLocaleDateString('es-CL')} ${new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`;
+
+    return concatBytes([
+      init,
+      calor,
+      centrar,
+      negritaOn, textoAscii('CASA DE CAMBIO JUNIORS\n'), negritaOff,
+      separador,
+      izquierda,
+      textoAscii(fechaHora + '\n'),
+      separador,
+      textoAscii(filaFija('Monto', `${formatearNumero(d.monto)} ${d.monedaOrigen}`, ancho) + '\n'),
+      textoAscii(filaFija('Tasa', `${d.operador === 'multiplicar' ? 'x' : '/'} ${d.tasa}`, ancho) + '\n'),
+      separador,
+      negritaOn,
+      textoAscii(filaFija('Resultado', `${formatearNumero(d.resultado)} ${d.monedaDestino}`, ancho) + '\n'),
+      negritaOff,
+      separador,
+      centrar,
+      textoAscii('Gracias por su cambio!\n'),
+      textoAscii('Ticket sin validez legal\n'),
+      avanceFinal,
+      cortar,
+    ]);
   }
 
   async function imprimir() {
