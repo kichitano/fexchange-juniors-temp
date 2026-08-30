@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { CambioConfirmado, Operador } from '../../../../core/models/cambio.model';
 import { ConfiguracionCambioService } from '../../../../core/services/configuracion-cambio.service';
+import { ImpresionService } from '../../../../core/services/impresion.service';
 import { PersistenciaService } from '../../../../core/services/persistencia.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { AutoFitTextoDirective } from '../../../../shared/directives/auto-fit-texto.directive';
@@ -21,6 +22,7 @@ import {
   formatearTasa,
   posicionParaDigitos,
 } from '../../../../shared/utils/formato-monto';
+import { ConfigurarImpresion } from '../configurar-impresion/configurar-impresion';
 
 const DURACION_CONFIRMACION_MS = 1000;
 const DURACION_ESCAPE_MS = 1000;
@@ -28,7 +30,7 @@ const DURACION_ESCAPE_MS = 1000;
 @Component({
   selector: 'app-formula-cambio',
   standalone: true,
-  imports: [HoldToConfirmDirective, AutoFitTextoDirective],
+  imports: [HoldToConfirmDirective, AutoFitTextoDirective, ConfigurarImpresion],
   templateUrl: './formula-cambio.html',
   styleUrl: './formula-cambio.scss',
 })
@@ -36,6 +38,7 @@ export class FormulaCambio {
   protected readonly configuracion = inject(ConfiguracionCambioService);
   private readonly persistencia = inject(PersistenciaService);
   private readonly sync = inject(SyncService);
+  private readonly impresion = inject(ImpresionService);
 
   protected readonly duracionMs = DURACION_CONFIRMACION_MS;
   protected readonly duracionEscapeMs = DURACION_ESCAPE_MS;
@@ -78,6 +81,14 @@ export class FormulaCambio {
         montoIngresado: monto,
         montoResultado: resultado,
       });
+      this.impresion.actualizarDatosTicket({
+        monedaOrigen: config.monedaOrigen,
+        monedaDestino: config.monedaDestino,
+        operador: config.operador,
+        precio: config.tasa,
+        monto,
+        total: resultado,
+      });
     });
 
     effect(() => {
@@ -112,12 +123,18 @@ export class FormulaCambio {
     if (tecla === 'm') {
       evento.preventDefault();
       this.enfocarYSeleccionar(campoMonto);
-    } else if (tecla === 't') {
+    } else if (tecla === 'p') {
       evento.preventDefault();
       this.enfocarYSeleccionar(campoTasa);
-    } else if (tecla === 'r') {
+    } else if (tecla === 't') {
       evento.preventDefault();
       this.enfocarYSeleccionar(campoResultado);
+    } else if (tecla === 'a') {
+      evento.preventDefault();
+      this.onAlternarPar();
+    } else if (tecla === 'i') {
+      evento.preventDefault();
+      this.impresion.imprimirTicket();
     }
   }
 
@@ -156,6 +173,11 @@ export class FormulaCambio {
   protected cambiarOperador(operador: Operador): void {
     this.configuracion.actualizarOperador(operador);
     this.sync.enviarActividad();
+  }
+
+  /** Atajo A: pasa al siguiente par de la lista fija, en loop infinito. */
+  protected onAlternarPar(): void {
+    this.configuracion.siguientePar();
   }
 
   protected onTasaInput(evento: Event): void {
@@ -235,7 +257,7 @@ export class FormulaCambio {
       return;
     }
     // Se difiere al siguiente tick: llamar focus()/select() de forma síncrona
-    // desde el keydown de M/T (mientras ese evento todavía se está
+    // desde el keydown de M/P/T (mientras ese evento todavía se está
     // procesando) hace que el foco no "pegue" de forma confiable en algunos
     // navegadores, y el primer dígito tipeado justo después se pierde.
     setTimeout(() => {

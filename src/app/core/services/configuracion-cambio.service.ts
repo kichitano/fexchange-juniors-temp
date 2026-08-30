@@ -49,6 +49,16 @@ export class ConfiguracionCambioService {
     this.parActivo.set({ origen, destino });
   }
 
+  /** Avanza al siguiente par de PARES_DISPONIBLES, en loop infinito. */
+  siguientePar(): void {
+    const actual = this.parActivo();
+    const indiceActual = PARES_DISPONIBLES.findIndex(
+      (p) => p.origen === actual.origen && p.destino === actual.destino,
+    );
+    const siguiente = PARES_DISPONIBLES[(indiceActual + 1) % PARES_DISPONIBLES.length];
+    this.parActivo.set({ origen: siguiente.origen, destino: siguiente.destino });
+  }
+
   actualizarTasa(tasa: number): void {
     this.actualizarConfigActiva((config) => ({ ...config, tasa }));
   }

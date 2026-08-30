@@ -44,7 +44,7 @@
   <div class="grupo grupo-operador-tasa">
     <div class="fila-etiqueta">
       <span class="etiqueta">Precio (operador + tasa)</span>
-      <span class="hint">Presiona <kbd>T</kbd> para enfocar</span>
+      <span class="hint">Presiona <kbd>P</kbd> para enfocar</span>
     </div>
     <div class="bloque-operador-tasa">
       <div class="operador-toggle" role="group" aria-label="Operador matemático">
@@ -81,8 +81,8 @@
 
   <div class="grupo grupo-resultado">
     <div class="fila-etiqueta">
-      <span class="etiqueta">Resultado · {{ config().monedaDestino }}</span>
-      <span class="hint">Presiona <kbd>R</kbd> para enfocar</span>
+      <span class="etiqueta">Total · {{ config().monedaDestino }}</span>
+      <span class="hint">Presiona <kbd>T</kbd> para enfocar</span>
     </div>
     <input
       #campoResultado
@@ -102,18 +102,25 @@
     </div>
   </div>
 
-  <div
-    class="indicador-escape"
-    [style.--progreso]="progresoEscape()"
-    [class.activo]="progresoEscape() > 0"
-  >
-    <span class="anillo" aria-hidden="true"></span>
-    <span class="texto">
-      @if (progresoEscape() > 0) {
-        Limpiando y forzando publicidad…
-      } @else {
-        Mantén <kbd>Esc</kbd> 1s para limpiar y forzar publicidad
-      }
-    </span>
+  <div class="fila-inferior">
+    <div
+      class="indicador-escape"
+      [style.--progreso]="progresoEscape()"
+      [class.activo]="progresoEscape() > 0"
+    >
+      <span class="anillo" aria-hidden="true"></span>
+      <span class="texto">
+        @if (progresoEscape() > 0) {
+          Limpiando y forzando publicidad…
+        } @else {
+          Mantén <kbd>Esc</kbd> 1s para limpiar y forzar publicidad
+        }
+      </span>
+    </div>
+
+    <div class="acciones-inferiores">
+      <span class="hint">Presiona <kbd>I</kbd> para imprimir</span>
+      <app-configurar-impresion />
+    </div>
   </div>
 </section>

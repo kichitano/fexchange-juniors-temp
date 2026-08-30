@@ -1,0 +1,33 @@
+<button type="button" class="boton-secundario" (click)="impresion.abrirConfiguracion()">
+  @if (impresion.directaConfigurada()) {
+    Impresión directa ✓
+  } @else {
+    Seleccionar impresora
+  }
+</button>
+
+@if (impresion.mostrarOnboarding()) {
+  <div class="fondo-modal" role="presentation">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloConfigImpresion">
+      <h2 id="tituloConfigImpresion">Impresión de tickets</h2>
+      <p>
+        Para imprimir el ticket directo, sin ventana de diálogo, hay que abrir el sistema con la
+        configuración especial. Si todavía no la tienes:
+      </p>
+      <div class="acciones">
+        <button type="button" class="boton-primario" (click)="impresion.descargarAccesoDirecto()">
+          Abrir con impresión directa
+        </button>
+        <button type="button" class="boton-secundario" (click)="impresion.marcarOmitida()">
+          Continuar
+        </button>
+      </div>
+      <p class="nota">
+        "Abrir con impresión directa" descarga un acceso directo — la próxima vez, ábrelo a él en
+        vez del ícono normal del navegador y las impresiones ya no mostrarán diálogo. "Continuar"
+        sigue usando el diálogo de impresión normal por ahora; puedes configurar esto más tarde
+        con el mismo botón.
+      </p>
+    </div>
+  </div>
+}

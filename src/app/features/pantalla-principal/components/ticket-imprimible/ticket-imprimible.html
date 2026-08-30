@@ -1,0 +1,15 @@
+@if (impresion.datosTicket(); as datos) {
+  <div id="ticket-imprimible" class="ticket" aria-hidden="true">
+    <div class="centrado titulo">CASA DE CAMBIO JUNIORS</div>
+    <hr class="separador" />
+    <div class="fila"><span>{{ fechaTexto() }}</span><span>{{ horaTexto() }}</span></div>
+    <hr class="separador" />
+    <div class="fila"><span>Monto</span><span>{{ montoTexto() }} {{ datos.monedaOrigen }}</span></div>
+    <div class="fila"><span>Precio</span><span>{{ precioTexto() }}</span></div>
+    <hr class="separador" />
+    <div class="fila destacada"><span>Total</span><span>{{ totalTexto() }} {{ datos.monedaDestino }}</span></div>
+    <hr class="separador" />
+    <div class="centrado pie">¡Gracias por su cambio!</div>
+    <div class="centrado aviso-legal">Ticket sin validez legal</div>
+  </div>
+}

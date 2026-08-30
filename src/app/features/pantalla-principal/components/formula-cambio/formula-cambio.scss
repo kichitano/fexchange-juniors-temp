@@ -225,3 +225,17 @@
   color: var(--color-accent-strong);
   font-weight: 600;
 }
+
+.fila-inferior {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+  flex-wrap: wrap;
+}
+
+.acciones-inferiores {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+}

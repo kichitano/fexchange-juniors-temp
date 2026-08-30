@@ -6,6 +6,19 @@ export function formatearMonto(valor: number): string {
   return `${negativo ? '-' : ''}${enteroConEspacios},${decimales}`;
 }
 
+/**
+ * Igual que formatearMonto pero con punto decimal en vez de coma: solo para
+ * el ticket impreso — a los clientes les confunde ver "1,20" en el papel
+ * (lo leen como mil doscientos). En pantalla se mantiene la coma.
+ */
+export function formatearMontoTicket(valor: number): string {
+  const negativo = valor < 0;
+  const fijo = Math.abs(valor).toFixed(2);
+  const [entero, decimales] = fijo.split('.');
+  const enteroConEspacios = entero.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return `${negativo ? '-' : ''}${enteroConEspacios}.${decimales}`;
+}
+
 /** Entero sin decimales, con espacio como separador de miles. Para el campo de monto. */
 export function formatearEntero(valor: number): string {
   const negativo = valor < 0;
