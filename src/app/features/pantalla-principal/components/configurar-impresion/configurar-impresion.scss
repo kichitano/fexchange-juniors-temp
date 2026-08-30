@@ -45,3 +45,11 @@
   font-size: 0.78rem;
   color: var(--color-text-faint);
 }
+
+.modal p.error {
+  color: var(--color-alert);
+  background: var(--color-alert-bg);
+  border-radius: var(--radio-sm);
+  padding: var(--espacio-3);
+  font-size: 0.82rem;
+}

@@ -1,6 +1,8 @@
 <button type="button" class="boton-secundario" (click)="impresion.abrirConfiguracion()">
-  @if (impresion.directaConfigurada()) {
-    Impresión directa ✓
+  @if (impresion.conectada()) {
+    Impresora: {{ impresion.nombreImpresora() }} ✓
+  } @else if (impresion.impresoraSeleccionada()) {
+    Impresora seleccionada (reconectar)
   } @else {
     Seleccionar impresora
   }
@@ -11,22 +13,33 @@
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloConfigImpresion">
       <h2 id="tituloConfigImpresion">Impresión de tickets</h2>
       <p>
-        Para imprimir el ticket directo, sin ventana de diálogo, hay que abrir el sistema con la
-        configuración especial. Si todavía no la tienes:
+        Para imprimir directo, sin diálogo, elige la impresora térmica por USB. El navegador va a
+        mostrar la lista de dispositivos USB conectados — selecciona la POS-D ahí.
       </p>
       <div class="acciones">
-        <button type="button" class="boton-primario" (click)="impresion.descargarAccesoDirecto()">
-          Abrir con impresión directa
+        <button
+          type="button"
+          class="boton-primario"
+          [disabled]="impresion.conectando()"
+          (click)="impresion.seleccionarImpresora()"
+        >
+          @if (impresion.conectando()) {
+            Conectando…
+          } @else {
+            Seleccionar impresora
+          }
         </button>
-        <button type="button" class="boton-secundario" (click)="impresion.marcarOmitida()">
-          Continuar
+        <button type="button" class="boton-secundario" (click)="impresion.continuarSinImpresora()">
+          Continuar sin impresora
         </button>
       </div>
+      @if (impresion.ultimoError(); as error) {
+        <p class="error">{{ error }}</p>
+      }
       <p class="nota">
-        "Abrir con impresión directa" descarga un acceso directo — la próxima vez, ábrelo a él en
-        vez del ícono normal del navegador y las impresiones ya no mostrarán diálogo. "Continuar"
-        sigue usando el diálogo de impresión normal por ahora; puedes configurar esto más tarde
-        con el mismo botón.
+        La selección queda recordada — la próxima vez la app se reconecta sola, sin volver a
+        preguntar. "Continuar sin impresora" cierra esto por ahora; puedes volver a intentarlo más
+        tarde con el mismo botón.
       </p>
     </div>
   </div>

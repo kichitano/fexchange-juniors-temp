@@ -5,12 +5,11 @@ import { ControlPopup } from './components/control-popup/control-popup';
 import { FormulaCambio } from './components/formula-cambio/formula-cambio';
 import { HistorialCambios } from './components/historial-cambios/historial-cambios';
 import { SelectorTipoCambio } from './components/selector-tipo-cambio/selector-tipo-cambio';
-import { TicketImprimible } from './components/ticket-imprimible/ticket-imprimible';
 
 @Component({
   selector: 'app-pantalla-principal',
   standalone: true,
-  imports: [SelectorTipoCambio, FormulaCambio, HistorialCambios, ControlPopup, TicketImprimible],
+  imports: [SelectorTipoCambio, FormulaCambio, HistorialCambios, ControlPopup],
   templateUrl: './pantalla-principal.html',
   styleUrl: './pantalla-principal.scss',
 })

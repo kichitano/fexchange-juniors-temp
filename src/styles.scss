@@ -154,28 +154,3 @@ input {
   white-space: nowrap;
   border: 0;
 }
-
-// Impresión del ticket (TicketImprimible): 72mm es el área imprimible real
-// de la POS-D TP-300 PRO (rollo de 80mm) — confirmado con la ficha técnica
-// del fabricante, ver public/diagnostico-impresora-pos-d-tp3000.html. Va acá
-// (global) y no en el SCSS del componente porque el encapsulamiento de
-// Angular no deja que un selector como "body *" alcance elementos fuera del
-// propio componente.
-@media print {
-  @page {
-    size: 72mm auto;
-    margin: 0;
-  }
-  body * {
-    visibility: hidden;
-  }
-  #ticket-imprimible,
-  #ticket-imprimible * {
-    visibility: visible;
-  }
-  #ticket-imprimible {
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
-}
