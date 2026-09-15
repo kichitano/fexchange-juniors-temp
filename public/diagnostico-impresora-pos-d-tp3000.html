@@ -409,14 +409,17 @@ $('btnImprimirNavegador').addEventListener('click', () => {
 
   function construirTicketEscPos() {
     const d = leerDatosTicket();
-    const ancho = $('anchoPapel').value === '58' ? 32 : 48; // columnas a 203dpi, fuente 12x24
+    // 56 en vez de 48 para 80mm: en una impresión real de prueba, 48
+    // dejaba de sobra más margen en blanco a la derecha que a la
+    // izquierda — 56 se acerca más al ancho real de esta impresora.
+    const ancho = $('anchoPapel').value === '58' ? 32 : 56;
     const separador = textoAscii('-'.repeat(ancho) + '\n');
 
     const init = comando(0x1b, 0x40); // ESC @: inicializar
-    // ESC 7 n1 n2 n3: parámetros de calor. Se sube el tiempo de calor (n2)
-    // sobre el default típico (80) para que el texto sin negrita salga más
-    // oscuro/quemado, no solo el negrita.
-    const calor = comando(0x1b, 0x37, 0x09, 0xc8, 0x02);
+    // Nota: se probó un comando ESC 7 (parámetros de calor) para oscurecer
+    // el texto sin negrita, pero esta impresora no lo reconoce — sus bytes
+    // de parámetro se imprimían como un carácter suelto al inicio del
+    // ticket y de paso rompían el centrado del título. Se quitó.
     const centrar = comando(0x1b, 0x61, 0x01);
     const izquierda = comando(0x1b, 0x61, 0x00);
     const negritaOn = comando(0x1b, 0x45, 0x01);
@@ -426,19 +429,21 @@ $('btnImprimirNavegador').addEventListener('click', () => {
     const avanceFinal = comando(0x1b, 0x64, 0x06);
     const cortar = comando(0x1d, 0x56, 0x01); // GS V 1: corte parcial
 
-    const fechaHora = `${new Date().toLocaleDateString('es-CL')} ${new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`;
+    const fechaTexto = new Date().toLocaleDateString('es-CL');
+    const horaTexto = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
 
     return concatBytes([
       init,
-      calor,
       centrar,
       negritaOn, textoAscii('CASA DE CAMBIO JUNIORS\n'), negritaOff,
       separador,
       izquierda,
-      textoAscii(fechaHora + '\n'),
+      textoAscii(filaFija(fechaTexto, horaTexto, ancho) + '\n'),
       separador,
       textoAscii(filaFija('Monto', `${formatearNumero(d.monto)} ${d.monedaOrigen}`, ancho) + '\n'),
-      textoAscii(filaFija('Tasa', `${d.operador === 'multiplicar' ? 'x' : '/'} ${d.tasa}`, ancho) + '\n'),
+      // Solo el número de la tasa, sin el símbolo x/÷ — el cliente no
+      // necesita saber si la casa multiplica o divide.
+      textoAscii(filaFija('Tasa', `${d.tasa}`, ancho) + '\n'),
       separador,
       negritaOn,
       textoAscii(filaFija('Resultado', `${formatearNumero(d.resultado)} ${d.monedaDestino}`, ancho) + '\n'),

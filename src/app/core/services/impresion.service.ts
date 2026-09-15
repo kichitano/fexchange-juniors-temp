@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { Moneda, Operador } from '../models/cambio.model';
-import { formatearEntero, formatearMontoTicket } from '../../shared/utils/formato-monto';
+import { formatearEntero, formatearMontoTicket, formatearTasa } from '../../shared/utils/formato-monto';
 
 export interface DatosTicket {
   monedaOrigen: Moneda;
@@ -219,10 +219,10 @@ export class ImpresionService {
 
   // ---------- Ticket ESC/POS ----------
   // Mismo formato que la herramienta de diagnóstico standalone
-  // (public/diagnostico-impresora-pos-d-tp3000.html): 48 columnas (203dpi,
-  // fuente 12x24, área imprimible real de ~72mm de la POS-D TP-300 PRO),
-  // comando de calor para oscurecer el texto sin negrita, punto decimal
-  // (no coma, confunde a los clientes) y aviso de que no es comprobante legal.
+  // (public/diagnostico-impresora-pos-d-tp3000.html): columnas calibradas a
+  // ojo contra impresiones reales de la POS-D TP-300 PRO (ver ancho más
+  // abajo), punto decimal (no coma, confunde a los clientes) y aviso de que
+  // no es comprobante legal.
 
   private comando(...bytes: number[]): Uint8Array {
     return Uint8Array.from(bytes);
@@ -257,13 +257,14 @@ export class ImpresionService {
   }
 
   private construirTicketEscPos(datos: DatosTicket): Uint8Array {
-    const ancho = 48;
+    // 56 en vez de 48: con 48 el contenido quedaba corto del borde derecho
+    // real del papel (más margen en blanco a la derecha que a la
+    // izquierda) en una impresión de prueba — 56 se acerca más al ancho
+    // real. Si todavía no llega justo al borde, seguir subiendo de a poco.
+    const ancho = 56;
     const separador = this.textoAscii('-'.repeat(ancho) + '\n');
 
     const init = this.comando(0x1b, 0x40); // ESC @: inicializar
-    // ESC 7 n1 n2 n3: parámetros de calor, más alto que el default para que
-    // el texto sin negrita salga más oscuro/quemado.
-    const calor = this.comando(0x1b, 0x37, 0x09, 0xc8, 0x02);
     const centrar = this.comando(0x1b, 0x61, 0x01);
     const izquierda = this.comando(0x1b, 0x61, 0x00);
     const negritaOn = this.comando(0x1b, 0x45, 0x01);
@@ -272,19 +273,21 @@ export class ImpresionService {
     const cortar = this.comando(0x1d, 0x56, 0x01); // GS V 1: corte parcial
 
     const ahora = new Date();
-    const fechaHora = `${ahora.toLocaleDateString('es-CL')} ${ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`;
-    const precioTexto = `${datos.operador === 'multiplicar' ? 'x' : '/'} ${datos.precio}`;
+    const fechaTexto = ahora.toLocaleDateString('es-CL');
+    const horaTexto = ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    // Solo el número, sin el símbolo de operador (x/÷) — el cliente no
+    // necesita saber si la casa multiplica o divide para llegar al total.
+    const precioTexto = formatearTasa(datos.precio);
 
     return this.concatBytes([
       init,
-      calor,
       centrar,
       negritaOn,
       this.textoAscii('CASA DE CAMBIO JUNIORS\n'),
       negritaOff,
       separador,
       izquierda,
-      this.textoAscii(fechaHora + '\n'),
+      this.textoAscii(this.filaFija(fechaTexto, horaTexto, ancho) + '\n'),
       separador,
       this.textoAscii(
         this.filaFija('Monto', `${formatearEntero(datos.monto)} ${datos.monedaOrigen}`, ancho) + '\n',
