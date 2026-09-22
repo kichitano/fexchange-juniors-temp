@@ -1,6 +1,6 @@
 <button type="button" class="boton-secundario" (click)="impresion.abrirConfiguracion()">
   @if (impresion.conectada()) {
-    Impresora: {{ impresion.nombreImpresora() }} ✓
+    Impresora conectada ✓
   } @else if (impresion.impresoraSeleccionada()) {
     Impresora seleccionada (reconectar)
   } @else {
@@ -13,8 +13,9 @@
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloConfigImpresion">
       <h2 id="tituloConfigImpresion">Impresión de tickets</h2>
       <p>
-        Para imprimir directo, sin diálogo, elige la impresora térmica por USB. El navegador va a
-        mostrar la lista de dispositivos USB conectados — selecciona la POS-D ahí.
+        Para imprimir directo, sin diálogo, elige el puerto serial de la impresora (el cable
+        serial→USB). El navegador va a mostrar la lista de puertos disponibles — selecciona ahí el
+        que corresponde a la POS-D.
       </p>
       <div class="acciones">
         <button

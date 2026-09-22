@@ -11,63 +11,60 @@ export interface DatosTicket {
   total: number;
 }
 
-// WebUSB no viene en los tipos estándar de TypeScript/DOM — se declara acá
-// el subconjunto mínimo que se usa.
-interface USBEndpoint {
-  endpointNumber: number;
-  direction: 'in' | 'out';
+// Web Serial no viene en los tipos estándar de TypeScript/DOM — se declara
+// acá el subconjunto mínimo que se usa.
+interface SerialPortInfo {
+  usbVendorId?: number;
+  usbProductId?: number;
 }
-interface USBAlternateInterface {
-  endpoints: USBEndpoint[];
+interface SerialOptions {
+  baudRate: number;
+  dataBits?: number;
+  stopBits?: number;
+  parity?: 'none' | 'even' | 'odd';
 }
-interface USBInterface {
-  interfaceNumber: number;
-  alternates: USBAlternateInterface[];
-}
-interface USBConfiguration {
-  interfaces: USBInterface[];
-}
-interface USBDevice {
-  vendorId: number;
-  productId: number;
-  productName?: string;
-  configuration: USBConfiguration | null;
-  open(): Promise<void>;
+interface SerialPort {
+  writable: WritableStream<Uint8Array<ArrayBufferLike>> | null;
+  open(options: SerialOptions): Promise<void>;
   close(): Promise<void>;
-  selectConfiguration(configurationValue: number): Promise<void>;
-  claimInterface(interfaceNumber: number): Promise<void>;
-  transferOut(endpointNumber: number, data: Uint8Array<ArrayBufferLike>): Promise<{ status: string }>;
+  getInfo(): SerialPortInfo;
 }
-interface USB {
-  requestDevice(options: { filters: unknown[] }): Promise<USBDevice>;
-  getDevices(): Promise<USBDevice[]>;
+interface Serial {
+  requestPort(options?: { filters?: unknown[] }): Promise<SerialPort>;
+  getPorts(): Promise<SerialPort[]>;
 }
 declare global {
   interface Navigator {
-    usb?: USB;
+    serial?: Serial;
   }
 }
 
 type EstadoConfiguracion = 'sin-configurar' | 'configurada' | 'omitida';
 
-interface DispositivoGuardado {
-  vendorId: number;
-  productId: number;
+interface PuertoGuardado {
+  usbVendorId?: number;
+  usbProductId?: number;
 }
 
 const CLAVE_ESTADO = 'casa-cambio-impresion-estado';
-const CLAVE_DISPOSITIVO = 'casa-cambio-impresion-dispositivo';
+const CLAVE_PUERTO = 'casa-cambio-impresion-puerto';
 
-const ZADIG_URL = 'https://zadig.akeo.ie/';
+// Default típico de impresoras ESC/POS por serial. Si la impresión sale con
+// caracteres corridos/basura, es la primera cifra a revisar/ajustar (según
+// los switches DIP o configuración de la impresora).
+const BAUD_RATE = 9600;
 
 /**
- * Impresión directa por WebUSB: se le mandan los bytes ESC/POS al dispositivo
- * por USB, sin pasar por el driver de Windows ni por el diálogo de impresión
- * del navegador — por eso es la única forma real de imprimir "sin diálogo".
- * Requisito: Windows NO debe tener un driver de impresora reteniendo la
- * interfaz USB (si lo tiene, claimInterface() falla con acceso denegado /
- * interfaz ocupada). Para eso hay que reemplazar el driver por WinUSB con
- * Zadig una vez — ver formatearError().
+ * Impresión directa por el puerto serial (Web Serial API, vía el cable
+ * serial→USB) — no por el puerto USB de la impresora. Se eligió serial en
+ * vez de WebUSB a propósito: el puerto USB de esta impresora ya está
+ * compartido en Windows para otro sistema (uno en PHP) con su driver
+ * original, y WebUSB necesita reemplazar ese driver (con Zadig) para poder
+ * usarlo, lo que rompe la impresión normal de Windows para ese otro
+ * sistema. El puerto serial es una interfaz física aparte de la misma
+ * impresora — Windows lo ve como un simple puerto COM genérico, sin ningún
+ * driver de impresora de por medio, así que no hay nada que reclamar ni
+ * ningún conflicto: los dos sistemas conviven sin tocarse.
  */
 @Injectable({ providedIn: 'root' })
 export class ImpresionService {
@@ -77,15 +74,13 @@ export class ImpresionService {
   readonly mostrarOnboarding = signal(this.estadoConfiguracion() === 'sin-configurar');
   readonly impresoraSeleccionada = signal(this.estadoConfiguracion() === 'configurada');
   readonly conectada = signal(false);
-  readonly nombreImpresora = signal<string | null>(null);
   readonly conectando = signal(false);
   readonly ultimoError = signal<string | null>(null);
 
-  private device: USBDevice | null = null;
-  private endpointOut: number | null = null;
+  private port: SerialPort | null = null;
 
   constructor() {
-    void this.reconectarSiHayGuardada();
+    void this.reconectarSiHayGuardado();
   }
 
   abrirConfiguracion(): void {
@@ -104,20 +99,24 @@ export class ImpresionService {
     this.mostrarOnboarding.set(false);
   }
 
-  /** Abre el selector nativo de dispositivos USB del navegador y conecta el elegido. */
+  /** Abre el selector nativo de puertos serial del navegador y conecta el elegido. */
   async seleccionarImpresora(): Promise<void> {
     this.ultimoError.set(null);
-    if (!navigator.usb) {
+    if (!navigator.serial) {
       this.ultimoError.set(
-        'Este navegador no soporta selección directa de impresoras USB. Usa Chrome o Edge de escritorio.',
+        'Este navegador no soporta selección directa de puertos serial. Usa Chrome o Edge de escritorio.',
       );
       return;
     }
     this.conectando.set(true);
     try {
-      const device = await navigator.usb.requestDevice({ filters: [] });
-      await this.conectarDispositivo(device);
-      this.escribirEstado('configurada', { vendorId: device.vendorId, productId: device.productId });
+      const port = await navigator.serial.requestPort();
+      await this.conectarPuerto(port);
+      const info = port.getInfo();
+      this.escribirEstado('configurada', {
+        usbVendorId: info.usbVendorId,
+        usbProductId: info.usbProductId,
+      });
       this.estadoConfiguracion.set('configurada');
       this.impresoraSeleccionada.set(true);
       this.mostrarOnboarding.set(false);
@@ -137,84 +136,58 @@ export class ImpresionService {
     if (!datos) {
       return;
     }
-    if (!this.device || this.endpointOut === null) {
+    if (!this.port || !this.port.writable) {
       this.ultimoError.set('No hay impresora conectada — usa "Seleccionar impresora" primero.');
       return;
     }
+    const writer = this.port.writable.getWriter();
     try {
       const bytes = this.construirTicketEscPos(datos);
-      await this.device.transferOut(this.endpointOut, bytes);
+      await writer.write(bytes);
     } catch (err) {
       this.ultimoError.set(this.formatearError(err));
       this.conectada.set(false);
+    } finally {
+      writer.releaseLock();
     }
   }
 
   // ---------- Conexión ----------
 
-  private async reconectarSiHayGuardada(): Promise<void> {
-    if (!navigator.usb) {
+  private async reconectarSiHayGuardado(): Promise<void> {
+    if (!navigator.serial) {
       return;
     }
-    const guardado = this.leerDispositivoGuardado();
+    const guardado = this.leerPuertoGuardado();
     if (!guardado) {
       return;
     }
     try {
-      const dispositivos = await navigator.usb.getDevices();
-      const encontrado = dispositivos.find(
-        (d) => d.vendorId === guardado.vendorId && d.productId === guardado.productId,
-      );
+      const puertos = await navigator.serial.getPorts();
+      const encontrado = puertos.find((p) => {
+        const info = p.getInfo();
+        return info.usbVendorId === guardado.usbVendorId && info.usbProductId === guardado.usbProductId;
+      });
       if (encontrado) {
-        await this.conectarDispositivo(encontrado);
+        await this.conectarPuerto(encontrado);
       }
     } catch (err) {
       this.ultimoError.set(this.formatearError(err));
     }
   }
 
-  private async conectarDispositivo(device: USBDevice): Promise<void> {
-    await device.open();
-    if (device.configuration === null) {
-      await device.selectConfiguration(1);
-    }
-    // Prueba todas las interfaces con endpoint de salida, no solo la primera:
-    // si Windows retiene una con su driver, puede haber otra libre.
-    const candidatas = (device.configuration?.interfaces ?? []).filter((i) =>
-      i.alternates[0].endpoints.some((e) => e.direction === 'out'),
-    );
-    let ifaceUsada: USBInterface | null = null;
-    let ultimoError: unknown = null;
-    for (const iface of candidatas) {
-      try {
-        await device.claimInterface(iface.interfaceNumber);
-        ifaceUsada = iface;
-        break;
-      } catch (err) {
-        ultimoError = err;
-      }
-    }
-    if (!ifaceUsada) {
-      throw ultimoError ?? new Error('No se encontró una interfaz USB con endpoint de salida.');
-    }
-    const endpoint = ifaceUsada.alternates[0].endpoints.find((e) => e.direction === 'out');
-    this.endpointOut = endpoint ? endpoint.endpointNumber : null;
-    this.device = device;
+  private async conectarPuerto(port: SerialPort): Promise<void> {
+    await port.open({ baudRate: BAUD_RATE, dataBits: 8, parity: 'none', stopBits: 1 });
+    this.port = port;
     this.conectada.set(true);
-    this.nombreImpresora.set(device.productName || 'Impresora USB');
   }
 
   private formatearError(err: unknown): string {
     const mensaje = err instanceof Error ? err.message : String(err);
-    if (/acceso|denied|access|ocupad|busy|claim/i.test(mensaje)) {
-      return (
-        `No se pudo conectar (${mensaje}). Windows tiene un driver reteniendo el puerto USB de la ` +
-        `impresora — hay que reemplazarlo una vez por el driver genérico WinUSB con la herramienta ` +
-        `Zadig (${ZADIG_URL}) para que esta app pueda usarla directo. Ojo: después de ese cambio, ` +
-        `Windows ya no podrá imprimir a esta impresora por su cuenta (por ejemplo desde Word) — solo esta app.`
-      );
+    if (/ocupad|busy|already open|in use/i.test(mensaje)) {
+      return `No se pudo conectar (${mensaje}). El puerto ya está abierto por otra pestaña/programa — ciérralo e intenta de nuevo.`;
     }
-    return `No se pudo conectar: ${mensaje}`;
+    return `No se pudo conectar: ${mensaje}. Si el ticket sale con caracteres corridos, puede ser la velocidad (baudios) configurada en la impresora.`;
   }
 
   // ---------- Ticket ESC/POS ----------
@@ -318,27 +291,27 @@ export class ImpresionService {
     return valor === 'configurada' || valor === 'omitida' ? valor : 'sin-configurar';
   }
 
-  private leerDispositivoGuardado(): DispositivoGuardado | null {
+  private leerPuertoGuardado(): PuertoGuardado | null {
     if (typeof localStorage === 'undefined') {
       return null;
     }
     try {
-      const crudo = localStorage.getItem(CLAVE_DISPOSITIVO);
-      return crudo ? (JSON.parse(crudo) as DispositivoGuardado) : null;
+      const crudo = localStorage.getItem(CLAVE_PUERTO);
+      return crudo ? (JSON.parse(crudo) as PuertoGuardado) : null;
     } catch {
       return null;
     }
   }
 
-  private escribirEstado(estado: EstadoConfiguracion, dispositivo: DispositivoGuardado | null): void {
+  private escribirEstado(estado: EstadoConfiguracion, puerto: PuertoGuardado | null): void {
     if (typeof localStorage === 'undefined') {
       return;
     }
     localStorage.setItem(CLAVE_ESTADO, estado);
-    if (dispositivo) {
-      localStorage.setItem(CLAVE_DISPOSITIVO, JSON.stringify(dispositivo));
+    if (puerto) {
+      localStorage.setItem(CLAVE_PUERTO, JSON.stringify(puerto));
     } else {
-      localStorage.removeItem(CLAVE_DISPOSITIVO);
+      localStorage.removeItem(CLAVE_PUERTO);
     }
   }
 }
