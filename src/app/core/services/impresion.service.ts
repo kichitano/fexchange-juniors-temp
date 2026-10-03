@@ -54,16 +54,6 @@ const CLAVE_PUERTO = 'casa-cambio-impresion-puerto';
 // los switches DIP o configuración de la impresora).
 const BAUD_RATE = 9600;
 
-// El ticket se manda en trozos chicos con una pausa entre cada uno en vez de
-// todo de una vez: sin control de flujo (el cable serial→USB no garantiza
-// RTS/CTS), la impresora no puede frenar al PC cuando su buffer de recepción
-// se llena y descarta lo que sigue llegando — por eso se perdía el final del
-// ticket (último separador, "Gracias", aviso legal, avance y corte).
-const TAMANO_TROZO = 32;
-// Tiempo de transmisión del trozo a BAUD_RATE (8N1 = 10 bits por byte) más
-// un margen para que la impresora alcance a procesarlo/imprimirlo.
-const PAUSA_TROZO_MS = Math.ceil((TAMANO_TROZO * 10 * 1000) / BAUD_RATE) + 30;
-
 /**
  * Impresión directa por el puerto serial (Web Serial API, vía el cable
  * serial→USB) — no por el puerto USB de la impresora. Se eligió serial en
@@ -153,10 +143,10 @@ export class ImpresionService {
     const writer = this.port.writable.getWriter();
     try {
       const bytes = this.construirTicketEscPos(datos);
-      for (let i = 0; i < bytes.length; i += TAMANO_TROZO) {
-        await writer.write(bytes.slice(i, i + TAMANO_TROZO));
-        await this.esperar(PAUSA_TROZO_MS);
-      }
+      // Todo de una sola vez, sin pausas: así el puerto lo transmite
+      // continuo y la impresora imprime de largo. Mandarlo en trozos con
+      // pausas hacía que la impresora se detuviera a esperar entre trozos.
+      await writer.write(bytes);
     } catch (err) {
       this.ultimoError.set(this.formatearError(err));
       this.conectada.set(false);
@@ -193,10 +183,6 @@ export class ImpresionService {
     await port.open({ baudRate: BAUD_RATE, dataBits: 8, parity: 'none', stopBits: 1 });
     this.port = port;
     this.conectada.set(true);
-  }
-
-  private esperar(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private formatearError(err: unknown): string {
