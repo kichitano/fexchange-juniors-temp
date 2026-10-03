@@ -54,6 +54,16 @@ const CLAVE_PUERTO = 'casa-cambio-impresion-puerto';
 // los switches DIP o configuración de la impresora).
 const BAUD_RATE = 9600;
 
+// El ticket se manda en trozos chicos con una pausa entre cada uno en vez de
+// todo de una vez: sin control de flujo (el cable serial→USB no garantiza
+// RTS/CTS), la impresora no puede frenar al PC cuando su buffer de recepción
+// se llena y descarta lo que sigue llegando — por eso se perdía el final del
+// ticket (último separador, "Gracias", aviso legal, avance y corte).
+const TAMANO_TROZO = 32;
+// Tiempo de transmisión del trozo a BAUD_RATE (8N1 = 10 bits por byte) más
+// un margen para que la impresora alcance a procesarlo/imprimirlo.
+const PAUSA_TROZO_MS = Math.ceil((TAMANO_TROZO * 10 * 1000) / BAUD_RATE) + 30;
+
 /**
  * Impresión directa por el puerto serial (Web Serial API, vía el cable
  * serial→USB) — no por el puerto USB de la impresora. Se eligió serial en
@@ -143,7 +153,10 @@ export class ImpresionService {
     const writer = this.port.writable.getWriter();
     try {
       const bytes = this.construirTicketEscPos(datos);
-      await writer.write(bytes);
+      for (let i = 0; i < bytes.length; i += TAMANO_TROZO) {
+        await writer.write(bytes.slice(i, i + TAMANO_TROZO));
+        await this.esperar(PAUSA_TROZO_MS);
+      }
     } catch (err) {
       this.ultimoError.set(this.formatearError(err));
       this.conectada.set(false);
@@ -180,6 +193,10 @@ export class ImpresionService {
     await port.open({ baudRate: BAUD_RATE, dataBits: 8, parity: 'none', stopBits: 1 });
     this.port = port;
     this.conectada.set(true);
+  }
+
+  private esperar(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private formatearError(err: unknown): string {
@@ -243,7 +260,7 @@ export class ImpresionService {
     const negritaOn = this.comando(0x1b, 0x45, 0x01);
     const negritaOff = this.comando(0x1b, 0x45, 0x00);
     const avanceFinal = this.comando(0x1b, 0x64, 0x06); // ESC d 6: margen antes del corte
-    const cortar = this.comando(0x1d, 0x48, 0x01); // GS V 1: corte parcial
+    const cortar = this.comando(0x1d, 0x56, 0x01); // GS V 1: corte parcial (0x56 = 'V'; 0x48 es GS H, no corta)
 
     const ahora = new Date();
     const fechaTexto = ahora.toLocaleDateString('es-CL');
