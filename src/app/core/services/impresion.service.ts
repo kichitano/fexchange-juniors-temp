@@ -230,11 +230,11 @@ export class ImpresionService {
   }
 
   private construirTicketEscPos(datos: DatosTicket): Uint8Array {
-    // 56 en vez de 48: con 48 el contenido quedaba corto del borde derecho
+    // 48: es el tamaño
     // real del papel (más margen en blanco a la derecha que a la
-    // izquierda) en una impresión de prueba — 56 se acerca más al ancho
+    // izquierda) en una impresión de prueba — 48 se acerca más al ancho
     // real. Si todavía no llega justo al borde, seguir subiendo de a poco.
-    const ancho = 56;
+    const ancho = 48;
     const separador = this.textoAscii('-'.repeat(ancho) + '\n');
 
     const init = this.comando(0x1b, 0x40); // ESC @: inicializar
@@ -243,7 +243,7 @@ export class ImpresionService {
     const negritaOn = this.comando(0x1b, 0x45, 0x01);
     const negritaOff = this.comando(0x1b, 0x45, 0x00);
     const avanceFinal = this.comando(0x1b, 0x64, 0x06); // ESC d 6: margen antes del corte
-    const cortar = this.comando(0x1d, 0x56, 0x01); // GS V 1: corte parcial
+    const cortar = this.comando(0x1d, 0x48, 0x01); // GS V 1: corte parcial
 
     const ahora = new Date();
     const fechaTexto = ahora.toLocaleDateString('es-CL');
