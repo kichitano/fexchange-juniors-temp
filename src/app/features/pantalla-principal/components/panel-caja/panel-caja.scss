@@ -31,7 +31,6 @@
 .cabecera {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   padding-bottom: var(--espacio-4);
   border-bottom: 1px solid var(--color-border);
 }
@@ -99,6 +98,7 @@
 
 .fila dd {
   margin: 0;
+  white-space: nowrap;
   font-family: var(--font-mono);
 }
 
@@ -111,13 +111,26 @@
   color: var(--color-alert);
 }
 
+.botones-caja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+}
+
+.botones-caja > *,
+.boton-cierre {
+  justify-content: center;
+  white-space: normal;
+}
+
+.aviso,
 .nota-origen {
   font-size: 0.72rem;
   color: var(--color-text-faint);
 }
 
-.boton-retirar {
-  justify-content: center;
+.aviso {
+  margin: var(--espacio-2) 0;
 }
 
 .formulario {
@@ -139,7 +152,9 @@
   margin-bottom: var(--espacio-2);
 }
 
-.campo:focus-visible {
+.campo:focus-visible,
+.boton-flotante:hover,
+.boton-flotante.abierto {
   border-color: var(--color-accent);
 }
 
@@ -232,7 +247,6 @@
 .boton-eliminar:hover {
   border-color: var(--color-alert);
   color: var(--color-alert);
-  background: var(--color-alert-bg);
 }
 
 .boton-flotante {
@@ -252,13 +266,4 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-}
-
-.boton-flotante:hover,
-.boton-flotante.abierto {
-  border-color: var(--color-accent);
-}
-
-.boton-flotante:hover {
-  color: var(--color-accent-strong);
 }

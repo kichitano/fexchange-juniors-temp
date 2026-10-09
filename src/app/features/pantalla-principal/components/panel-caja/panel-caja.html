@@ -1,84 +1,132 @@
-<aside
-  class="panel"
-  [class.visible]="caja.panelVisible()"
-  aria-label="Caja"
->
+<aside class="panel" [class.visible]="caja.panelVisible()" aria-label="Caja">
   <header class="cabecera">
     <span class="titulo">Caja</span>
-    <span class="rotulo">Contabilidad en vivo</span>
+    <span class="rotulo">Contabilidad en vivo · {{ caja.fechaHoy() }}</span>
   </header>
 
   <section class="saldo">
-    <span class="etiqueta">Monto en caja · CLP</span>
+    <span class="etiqueta">Monto en caja hoy · CLP</span>
     <span class="monto" [class.negativo]="caja.montoEnCajaClp() < 0">
       {{ formatearEntero(caja.montoEnCajaClp()) }}
     </span>
 
     <dl class="desglose">
       <div class="fila">
-        <dt>Ingresos ({{ caja.operacionesClp().length }})</dt>
-        <dd class="positivo">{{ caja.totalIngresosClp() > 0 ? "+" : "" }}{{ formatearEntero(caja.totalIngresosClp()) }}</dd>
+        <dt>Saldo inicial</dt>
+        <dd>{{ formatearEntero(caja.saldoInicialHoyClp()?.monto ?? 0) }}</dd>
       </div>
       <div class="fila">
-        <dt>Retiros ({{ caja.retirosClp().length }})</dt>
-        <dd class="alerta">{{ caja.totalRetirosClp() > 0 ? "−" : "" }}{{ formatearEntero(caja.totalRetirosClp()) }}</dd>
+        <dt>Ingresos ({{ caja.operacionesHoyClp().length }})</dt>
+        <dd class="positivo">
+          {{ caja.totalIngresosHoyClp() > 0 ? '+' : '' }}{{ formatearEntero(caja.totalIngresosHoyClp()) }}
+        </dd>
+      </div>
+      <div class="fila">
+        <dt>Retiros ({{ caja.retirosHoyClp().length }})</dt>
+        <dd class="alerta">
+          {{ caja.totalRetirosHoyClp() > 0 ? '−' : '' }}{{ formatearEntero(caja.totalRetirosHoyClp()) }}
+        </dd>
       </div>
     </dl>
-    <p class="nota-origen">Suma de operaciones CLP → PEN con ÷, menos retiros.</p>
+    @if (caja.saldoInicialHoyClp(); as saldo) {
+      <p class="nota-origen">Saldo inicial fijado a las {{ saldo.hora }}</p>
+    }
+    <p class="nota-origen">Saldo inicial + operaciones CLP → PEN con ÷ de hoy − retiros de hoy.</p>
   </section>
 
-  @if (formularioAbierto()) {
-    <form class="formulario" (submit)="confirmarRetiro($event)" (keydown)="onKeydownFormulario($event)">
-      <label class="etiqueta" for="monto-retiro">Monto a retirar · CLP</label>
-      <input
-        #campoMontoRetiro
-        id="monto-retiro"
-        class="campo campo-monto"
-        type="text"
-        inputmode="numeric"
-        autocomplete="off"
-        placeholder="0"
-        (input)="onMontoRetiroInput($event)"
-      />
+  @switch (formularioAbierto()) {
+    @case ('retiro') {
+      <form class="formulario" (submit)="confirmarRetiro($event)" (keydown)="onKeydownFormulario($event)">
+        <label class="etiqueta" for="monto-caja">Monto a retirar · CLP</label>
+        <input
+          #campoMonto
+          id="monto-caja"
+          class="campo campo-monto"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          placeholder="0"
+          [value]="textoMonto(montoRetiro())"
+          (input)="onMontoInput($event, montoRetiro)"
+        />
 
-      <label class="etiqueta" for="nota-retiro">Motivo (opcional)</label>
-      <input
-        id="nota-retiro"
-        class="campo"
-        type="text"
-        autocomplete="off"
-        maxlength="80"
-        placeholder="Ej.: guardado en caja fuerte"
-        [value]="notaRetiro()"
-        (input)="onNotaRetiroInput($event)"
-      />
+        <label class="etiqueta" for="nota-retiro">Motivo (opcional)</label>
+        <input
+          id="nota-retiro"
+          class="campo"
+          type="text"
+          autocomplete="off"
+          maxlength="80"
+          placeholder="Ej.: guardado en caja fuerte"
+          [value]="notaRetiro()"
+          (input)="onNotaRetiroInput($event)"
+        />
 
-      @if (intentoConfirmar() && errorRetiro(); as error) {
-        <p class="error">{{ error }}</p>
-      }
+        @if (intentoConfirmar() && errorRetiro(); as error) {
+          <p class="error">{{ error }}</p>
+        }
 
-      <div class="acciones">
-        <button type="submit" class="boton-primario">Confirmar</button>
-        <button type="button" class="boton-secundario" (click)="cerrarFormulario()">Cancelar</button>
+        <div class="acciones">
+          <button type="submit" class="boton-primario">Confirmar</button>
+          <button type="button" class="boton-secundario" (click)="cerrarFormulario()">Cancelar</button>
+        </div>
+      </form>
+    }
+    @case ('saldo') {
+      <form class="formulario" (submit)="confirmarSaldo($event)" (keydown)="onKeydownFormulario($event)">
+        <label class="etiqueta" for="monto-caja">Saldo inicial de hoy · CLP</label>
+        <input
+          #campoMonto
+          id="monto-caja"
+          class="campo campo-monto"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          placeholder="0"
+          [value]="textoMonto(montoSaldo())"
+          (input)="onMontoInput($event, montoSaldo)"
+        />
+
+        @if (caja.cierreAnteriorClp(); as cierre) {
+          <button type="button" class="boton-secundario boton-cierre" (click)="usarCierreAnterior()">
+            Usar cierre del {{ cierre.fecha }}: {{ formatearEntero(cierre.monto) }}
+          </button>
+        }
+
+        <p class="aviso">
+          La caja de hoy se reinicia: lo registrado hasta ahora deja de sumarse y se parte de este
+          monto.
+        </p>
+
+        <div class="acciones">
+          <button type="submit" class="boton-primario">Confirmar</button>
+          <button type="button" class="boton-secundario" (click)="cerrarFormulario()">Cancelar</button>
+        </div>
+      </form>
+    }
+    @default {
+      <div class="botones-caja">
+        <button type="button" class="boton-primario" (click)="abrirFormulario('retiro')">
+          Retirar monto
+        </button>
+        <button type="button" class="boton-secundario" (click)="abrirFormulario('saldo')">
+          Saldo inicial
+        </button>
       </div>
-    </form>
-  } @else {
-    <button type="button" class="boton-primario boton-retirar" (click)="abrirFormulario()">
-      Retirar monto
-    </button>
+    }
   }
 
   <section class="retiros">
-    <span class="etiqueta">Retiros registrados</span>
-    @if (caja.retirosClp().length === 0) {
-      <p class="vacio">Aún no hay retiros.</p>
+    <span class="etiqueta">Retiros de hoy</span>
+    @if (caja.retirosHoyClp().length === 0) {
+      <p class="vacio">Aún no hay retiros hoy.</p>
     } @else {
       <ul class="lista">
-        @for (retiro of caja.retirosClp(); track retiro.id) {
+        @for (retiro of caja.retirosHoyClp(); track retiro.id) {
           <li class="retiro">
             <div class="retiro-info">
               <span class="retiro-monto">−{{ formatearEntero(retiro.monto) }}</span>
-              <span class="retiro-fecha">{{ retiro.fecha }} · {{ retiro.hora }}</span>
+              <span class="retiro-fecha">{{ retiro.hora }}</span>
               @if (retiro.nota) {
                 <span class="retiro-nota">{{ retiro.nota }}</span>
               }

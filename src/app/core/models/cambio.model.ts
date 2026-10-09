@@ -41,3 +41,16 @@ export interface RetiroCaja {
   monto: number;
   nota: string;
 }
+
+/**
+ * Monto con el que arranca la caja de un día. Al fijarlo, la caja de ese día
+ * se "limpia": las operaciones y retiros que ya existían en ese momento
+ * (idsExcluidos) dejan de sumarse.
+ */
+export interface SaldoInicialCaja {
+  fecha: string;
+  hora: string;
+  moneda: Moneda;
+  monto: number;
+  idsExcluidos: string[];
+}
