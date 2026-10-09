@@ -31,3 +31,13 @@ export const PARES_DISPONIBLES: ReadonlyArray<{ origen: Moneda; destino: Moneda 
 export function claveTipoCambio(origen: Moneda, destino: Moneda): string {
   return `${origen}_${destino}`;
 }
+
+/** Dinero sacado físicamente de la caja (para guardar, aligerar la carga, etc.). */
+export interface RetiroCaja {
+  id: string;
+  fecha: string;
+  hora: string;
+  moneda: Moneda;
+  monto: number;
+  nota: string;
+}
