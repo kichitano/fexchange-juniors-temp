@@ -1,4 +1,6 @@
-<div class="pantalla">
+<app-panel-caja />
+
+<div class="pantalla" [class.con-panel-caja]="caja.panelVisible()">
   <header class="cabecera">
     <div class="marca">
       <img src="assets/brand/logo.png" alt="" class="logo" />

@@ -1,21 +1,24 @@
 import { Component, effect, inject, untracked } from '@angular/core';
+import { CajaService } from '../../core/services/caja.service';
 import { ConfiguracionCambioService } from '../../core/services/configuracion-cambio.service';
 import { SyncService } from '../../core/services/sync.service';
 import { ControlPopup } from './components/control-popup/control-popup';
 import { FormulaCambio } from './components/formula-cambio/formula-cambio';
 import { HistorialCambios } from './components/historial-cambios/historial-cambios';
+import { PanelCaja } from './components/panel-caja/panel-caja';
 import { SelectorTipoCambio } from './components/selector-tipo-cambio/selector-tipo-cambio';
 
 @Component({
   selector: 'app-pantalla-principal',
   standalone: true,
-  imports: [SelectorTipoCambio, FormulaCambio, HistorialCambios, ControlPopup],
+  imports: [SelectorTipoCambio, FormulaCambio, HistorialCambios, ControlPopup, PanelCaja],
   templateUrl: './pantalla-principal.html',
   styleUrl: './pantalla-principal.scss',
 })
 export class PantallaPrincipal {
   private readonly configuracion = inject(ConfiguracionCambioService);
   private readonly sync = inject(SyncService);
+  protected readonly caja = inject(CajaService);
 
   constructor() {
     effect(() => {
